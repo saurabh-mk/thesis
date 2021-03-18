@@ -1,0 +1,140 @@
+---
+title: "Extracting order level clades from GTDB phylogeny"
+output: html_notebook
+---
+
+#### Background
+This notebook contains the code to fit Brownian and OU models to GC content of order-level clades. I initially used the geiger software/package to fit these models.
+
+```{r read_GTDB_tree }
+library(phytools)
+library(rncl)
+library(geiger)
+
+data_folder <- "../Input_data/phylogenies/"
+
+#there was a problem reading this tree with read.newick
+GTDB_14k_tree <- read_newick_phylo(file = paste0(data_folder, "GTDB_bac120_r80_pruned0.01.newick"))
+GTDB_14k_metadata <- read.delim(file = paste0(data_folder, "GTDB_bac_metadata_r80_pruned0.01.tsv"), header = T, row.names = 1, stringsAsFactors = F)
+
+GTDB_14k_tree_labeled <- GTDB_14k_tree
+GTDB_14k_tree_labeled$tip.label <- sapply(GTDB_14k_tree$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+```
+
+####Bacteroidetes
+```{r read_Bacteroidetes_subclades }
+Bacteroidale_GTDB_14k_tree <- read_newick_phylo(file = paste0(data_folder, "Bacteroidale_GTDB_14k_tree.newick"))
+Flavobacteriale_GTDB_14k_tree <- read_newick_phylo(file = paste0(data_folder, "Flavobacteriale_GTDB_14k_tree.newick"))
+Cytophagale_GTDB_14k_tree <- read_newick_phylo(file = paste0(data_folder, "Cytophagale_GTDB_14k_tree.newick"))
+
+gc_Bactero <- GTDB_14k_metadata[Bacteroidale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Bactero) <- Bacteroidale_GTDB_14k_tree$tip.label
+gc_Flavo <- GTDB_14k_metadata[Flavobacteriale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Flavo) <- Flavobacteriale_GTDB_14k_tree$tip.label
+gc_Cyto <- GTDB_14k_metadata[Cytophagale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Cyto) <- Cytophagale_GTDB_14k_tree$tip.label
+```
+
+Lets fit Brownian/OU models to all of these subclades-
+```{r fit_BM_models_Bacteroidetes_subclades }
+Bacteroidale_models_BM <- fitContinuous(phy = Bacteroidale_GTDB_14k_tree, dat = gc_Bactero, model = "BM", ncores = 4)
+Flavobacteriale_models_BM <- fitContinuous(phy = Flavobacteriale_GTDB_14k_tree, dat = gc_Flavo, model = "BM", ncores = 4)
+Cytophagale_models_BM <- fitContinuous(phy = Cytophagale_GTDB_14k_tree, dat = gc_Cyto, model = "BM", ncores = 4)
+
+Bacteroidale_models_BM$opt$lnL
+Flavobacteriale_models_BM$opt$lnL
+Cytophagale_models_BM$opt$lnL
+```
+
+```{r fit_OU_models_Bacteroidetes_subclades }
+Bacteroidale_models_OU <- fitContinuous(phy = Bacteroidale_GTDB_14k_tree, dat = gc_Bactero, model = "OU", ncores = 4)
+Flavobacteriale_models_OU <- fitContinuous(phy = Flavobacteriale_GTDB_14k_tree, dat = gc_Flavo, model = "OU", ncores = 4)
+Cytophagale_models_OU <- fitContinuous(phy = Cytophagale_GTDB_14k_tree, dat = gc_Cyto, model = "OU", ncores = 4)
+
+Bacteroidale_models_OU$opt$lnL
+Flavobacteriale_models_OU$opt$lnL
+Cytophagale_models_OU$opt$lnL
+```
+
+#### Alpha-proteobacteria
+```{r read_Alphaproteo_subclades }
+Rhizobiale_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Rhizobiale_GTDB_14k_tree.newick"))
+Alpha1_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Alpha1_GTDB_14k_tree.newick"))
+Sphingomonadale_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Sphingomonadale_GTDB_14k_tree.newick"))
+Rhodobacterale_GTDB_14k_tree(paste0(data_folder, "Rhodobacterale_GTDB_14k_tree.newick"))
+
+gc_Rhizob <- GTDB_14k_metadata[Rhizobiale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Rhizob) <- Rhizobiale_GTDB_14k_tree$tip.label
+gc_Alpha1 <- GTDB_14k_metadata[Alpha1_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Alpha1) <- Alpha1_GTDB_14k_tree$tip.label
+gc_Sphingo <- GTDB_14k_metadata[Sphingomonadale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Sphingo) <- Sphingomonadale_GTDB_14k_tree$tip.label
+gc_Rhodo <- GTDB_14k_metadata[Rhodobacterale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Rhodo) <- Rhodobacterale_GTDB_14k_tree$tip.label
+```
+
+```{r fit_BM_models_Alphaproteo_subclades }
+library(geiger)
+Rhizobiale_models_BM <- fitContinuous(phy = Rhizobiale_GTDB_14k_tree, dat = gc_Rhizob, model = "BM", ncores = 4)
+Alpha1_models_BM <- fitContinuous(phy = Alpha1_GTDB_14k_tree, dat = gc_Alpha1, model = "BM", ncores = 4)
+Sphingomonadale_models_BM <- fitContinuous(phy = Sphingomonadale_GTDB_14k_tree, dat = gc_Sphingo, model = "BM", ncores = 4)
+Rhodobacterale_models_BM <- fitContinuous(phy = Rhodobacterale_GTDB_14k_tree, dat = gc_Rhodo, model = "BM", ncores = 4)
+
+Rhizobiale_models_BM$opt$lnL
+Alpha1_models_BM$opt$lnL
+Sphingomonadale_models_BM$opt$lnL
+Rhodobacterale_models_BM$opt$lnL
+```
+
+```{r fit_OU_models_Alphaproteo_subclades }
+Rhizobiale_models_OU <- fitContinuous(phy = Rhizobiale_GTDB_14k_tree, dat = gc_Rhizob, model = "OU", ncores = 4)
+Alpha1_models_OU <- fitContinuous(phy = Alpha1_GTDB_14k_tree, dat = gc_Alpha1, model = "OU", ncores = 4)
+Sphingomonadale_models_OU <- fitContinuous(phy = Sphingomonadale_GTDB_14k_tree, dat = gc_Sphingo, model = "OU", ncores = 4)
+Rhodobacterale_models_OU <- fitContinuous(phy = Rhodobacterale_GTDB_14k_tree, dat = gc_Rhodo, model = "OU", ncores = 4)
+
+Rhizobiale_models_OU$opt$lnL
+Alpha1_models_OU$opt$lnL
+Sphingomonadale_models_OU$opt$lnL
+Rhodobacterale_models_OU$opt$lnL
+```
+
+#### Gamma/Beta-proteobacteria
+```{r read_Betaproteo_subclades }
+Enterobacterales_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Enterobacterales_GTDB_14k_tree.newick"))
+Pseudomonadale_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Pseudomonadale_GTDB_14k_tree.newick"))
+Betaproteo_GTDB_14k_tree <- read_newick_phylo(paste0(data_folder, "Betaproteo_GTDB_14k_tree.newick"))
+
+gc_Enterobacterales <- GTDB_14k_metadata[Enterobacterales_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Enterobacterales) <- Enterobacterales_GTDB_14k_tree$tip.label
+gc_Pseudomonadale <- GTDB_14k_metadata[Pseudomonadale_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Pseudomonadale) <- Pseudomonadale_GTDB_14k_tree$tip.label
+gc_Betaproteo <- GTDB_14k_metadata[Betaproteo_GTDB_14k_tree$tip.label, "gc_percentage"]
+names(gc_Betaproteo) <- Betaproteo_GTDB_14k_tree$tip.label
+```
+
+Lets fit Brownian/OU models to all the subclades-
+```{r fit_BM_models_Gammaproteo_subclades }
+library(geiger)
+Pseudomonadale_models_BM <- fitContinuous(phy = Pseudomonadale_GTDB_14k_tree, dat = gc_Pseudomonadale, model = "BM", ncores = 4)
+Gamma1_models_BM <- fitContinuous(phy = Gamma1_GTDB_14k_tree, dat = gc_Gamma1, model = "BM", ncores = 4)
+Enterobacterales_models_BM <- fitContinuous(phy = Enterobacterales_GTDB_14k_tree, dat = gc_Enterobacterales, model = "BM", ncores = 4)
+Betaproteo_models_BM <- fitContinuous(phy = Betaproteo_GTDB_14k_tree, dat = gc_Betaproteo, model = "BM", ncores = 4)
+
+Pseudomonadale_models_BM$opt$lnL
+Gamma1_models_BM$opt$lnL
+Enterobacterales_models_BM$opt$lnL
+Betaproteo_models_BM$opt$lnL
+```
+
+
+```{r fit_OU_models_Gammaproteo_subclades }
+Pseudomonadale_models_OU <- fitContinuous(phy = Pseudomonadale_GTDB_14k_tree, dat = gc_Pseudomonadale, model = "OU", ncores = 4)
+Gamma1_models_OU <- fitContinuous(phy = Gamma1_GTDB_14k_tree, dat = gc_Gamma1, model = "OU", ncores = 4)
+Enterobacterales_models_OU <- fitContinuous(phy = Enterobacterales_GTDB_14k_tree, dat = gc_Enterobacterales, model = "OU", ncores = 4)
+Betaproteo_models_OU <- fitContinuous(phy = Betaproteo_GTDB_14k_tree, dat = gc_Betaproteo, model = "OU", ncores = 4)
+
+Pseudomonadale_models_OU$opt$lnL
+Gamma1_models_OU$opt$lnL
+Enterobacterales_models_OU$opt$lnL
+Betaproteo_models_OU$opt$lnL
+```

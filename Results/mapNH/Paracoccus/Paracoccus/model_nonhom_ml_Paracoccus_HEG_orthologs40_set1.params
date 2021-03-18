@@ -1,0 +1,17 @@
+# Log likelihood = -53926.52766624242940451950
+# Number of sites = 7032
+
+# Substitution model parameters:
+nonhomogeneous=general
+nonhomogeneous.number_of_models=2
+
+model1=YN98(frequencies=F3X4(1_Full.theta=0.573242838541,1_Full.theta1=0.641727675180,1_Full.theta2=0.588199973745,2_Full.theta=0.464306302089,2_Full.theta1=0.679461662064,2_Full.theta2=0.451078170602,3_Full.theta=0.825845748771,3_Full.theta1=0.283657972746,3_Full.theta2=0.303919478739),kappa=1.647912674902,omega=0.028592630089)
+model1.nodes_id=0,1,2,3,4,6,7,8,9,10,11,12,13
+
+model2=YN98(frequencies=F3X4(1_Full.theta=0.589024720308,1_Full.theta1=0.649321115553,1_Full.theta2=0.627290191824,2_Full.theta=0.455184674097,2_Full.theta1=0.658605692634,2_Full.theta2=0.555497905855,3_Full.theta=0.595624969990,3_Full.theta1=0.235860660290,3_Full.theta2=0.310268116984),kappa=2.391083030571,omega=0.025115578656)
+model2.nodes_id=5
+
+# Root frequencies:
+nonhomogeneous.root_freq=F3X4(1_Full.theta=0.649421082204,1_Full.theta1=0.702591638449,1_Full.theta2=0.608220325984,2_Full.theta=0.412285449328,2_Full.theta1=0.538362427474,2_Full.theta2=0.446613202414,3_Full.theta=0.872322580584,3_Full.theta1=0.464634161539,3_Full.theta2=0.451130430693)
+# Rate distribution parameters:
+rate_distribution=Gamma(n=5,alpha=0.572530930619, Gamma.beta=alpha)

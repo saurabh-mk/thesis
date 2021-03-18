@@ -1,0 +1,32 @@
+******************************************************************
+*                     Map NH, version 1.1.1                      *
+* Authors: J. Dutheil                       Created on  09/12/10 *
+*          B. Boussau                       Modif. 17/12/11      *
+*          L. Guéguen                       Last Modif. 24/11/14 *
+******************************************************************
+
+Parsing options:
+Parsing file Buchnera/hom_map_dNdS_per_branch_Buchnera.bpp for options.
+Parsing file Buchnera/model_hom_ml_YN98_Buchnera.param.params for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: Buchnera_HEG_orthologs40_set1.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: no
+Number of sequences....................: 7
+Number of sites........................: 7400
+Input tree file .......................: Buchnera/tree_hom_ml_YN98_Buchnera.dnd
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+WARNING!!! Parameter output.tree_with_id.file not specified. Default used instead: none
+Heterogeneous model....................: no
+Substitution model.....................: CodonRate
+External frequencies initialization for: None
+WARNING!!! Parameter rate_distribution not specified. Default used instead: Constant()
+Distribution...........................: Constant
+Number of classes......................: 1
+- Category 0 (Pr = 1) rate.............: 1
+Rate distribution......................: Constant
+Number of classes......................: 1
+Log-Likelihood.........................: -109981

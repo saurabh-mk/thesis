@@ -1,0 +1,13 @@
+******************************************************************
+*                     Map NH, version 1.1.1                      *
+* Authors: J. Dutheil                       Created on  09/12/10 *
+*          B. Boussau                       Modif. 17/12/11      *
+*          L. Guéguen                       Last Modif. 24/11/14 *
+******************************************************************
+
+Parsing options:
+Parsing file /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/map_dNdS_per_branch_Buchnera_Aphis.bpp for options.
+Parsing file /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/model_nonhom_ml_Buchnera_Aphis_HEG_orthologs10_set1.params for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+File does not exists: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis_HEG_orthologs10_set1.fa

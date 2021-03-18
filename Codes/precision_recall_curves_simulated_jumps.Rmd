@@ -1,0 +1,165 @@
+---
+title: "precision recall curves for simulated jumps"
+output: html_notebook
+---
+
+### Background
+Here, I will analyze the inference (by levolution) of jumps simulated according to a Levy jumps model.
+
+```{r preliminaries }
+library(phytools)
+library(rncl)
+
+main_dir <- "../Results/geigerSim_results/"
+res_dir <- main_dir
+out_dir <- res_dir
+```
+
+### Summary of precision-recall
+Here, I will regenerate precision-recall curves for all clades analysed upto now-
+```{r summary_precision_recall }
+clades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale", "Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo",3))
+alphas_oi <- c(1,1,1,0.5,0.25,0.25,1,0.25,0.5,0.5,2,1,0.1)
+config_oi <- 1
+n_sims <- 1:5
+
+pp_range <- c(seq(0,0.7,0.1),seq(0.75,0.9,0.05),seq(0.91,1,0.01))
+PR_df <- as.data.frame(matrix(data=NA, nrow = length(clades_oi)*length(pp_range), ncol=4, dimnames = list(NULL, c("clade", "pp", "precision", "recall"))))
+  
+cnt <- 1
+for(clade_n in 1:length(clades_oi)){
+  precision_oi <- recall_oi <- c()
+  clade_oi <- clades_oi[clade_n]
+  parent_oi <- p_folders[clade_n]
+  alpha_oi <- alphas_oi[clade_n]
+  
+  for(pp_cutoff in pp_range){
+    comparison_matrix <- matrix(data = 0, nrow = length(n_sims), ncol = 4, dimnames = list(n_sims,c("TP", "TN", "FP", "FN")))
+    
+    for(sim_n in n_sims){
+      ##posterior probabilities inferred by levolution on simulated trait data
+      tree_pp <- read.newick(file = paste0(res_dir,clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_geigerSim", sim_n, ".post"))
+      
+      ##actual jump locations in simulated data
+      actual_jump_details <- read.csv(paste0(res_dir, clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_geigerSim", sim_n, ".details"), header = T, stringsAsFactors = F)
+      actual_jump_edges <- which(actual_jump_details$jumps>0)
+      actual_jump_col <- sapply(actual_jump_details$effect_Jump[actual_jump_edges], function(x) ifelse(x<0,"red","blue"))
+      actual_jump_size <- sapply(actual_jump_details$effect_Jump[actual_jump_edges], function(x) sqrt(abs(x)))
+      actual_jump_size <- actual_jump_size/max(actual_jump_size)
+      
+      comparison_matrix[as.character(sim_n),"TP"] <- length(intersect(which(tree_pp$edge.length>=pp_cutoff), actual_jump_edges)) ##True positives
+      comparison_matrix[as.character(sim_n),"TN"] <- length(intersect(which(tree_pp$edge.length<pp_cutoff), setdiff(1:length(tree_pp$edge.length), actual_jump_edges))) ##True negatives
+      comparison_matrix[as.character(sim_n),"FP"] <- length(intersect(which(tree_pp$edge.length>=pp_cutoff), setdiff(1:length(tree_pp$edge.length), actual_jump_edges))) ##False positives
+      comparison_matrix[as.character(sim_n),"FN"] <- length(intersect(which(tree_pp$edge.length<pp_cutoff), actual_jump_edges)) ##False negatives
+    } ##loop over sims
+
+    inference_summary <- colSums(comparison_matrix)
+    precision_oi <- inference_summary["TP"]/(inference_summary["TP"]+inference_summary["FP"])
+    recall_oi <- inference_summary["TP"]/(inference_summary["TP"]+inference_summary["FN"])
+    
+    PR_df[cnt, ] <- c(clade_oi, pp_cutoff, precision_oi, recall_oi)
+    cnt <- cnt + 1
+  } ##loop over pps
+} #loop over clades
+
+write.table(PR_df, file = paste0(res_dir, "levolution_precision_recall_data.tab"), quote = F, row.names = F)
+```
+
+#### Plotting
+Lets plot the precision-recall data for all clades
+```{r summary_plots_precision-recall }
+library(ggplot2)
+library(ggrepel)
+require(cowplot)
+library(tidyverse)
+
+PR_df <- read.table(file = paste0(res_dir, "levolution_precision_recall_data.tab"), stringsAsFactors = F, header = T)
+PR_df$clade <- factor(x = PR_df$clade, levels = unique(PR_df$clade))
+
+PR_df$threshold <- "normal"
+PR_df$threshold_text <- "normal_text"
+pp_thresholds <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75,0.9,0.9,0.9)
+for(clade_n in 1:length(clades_oi)){
+  clade_oi <- clades_oi[clade_n]
+  pp_threshold <- pp_thresholds[clade_n]
+  PR_df$threshold[PR_df$clade==clade_oi & PR_df$pp==pp_threshold] <- "highlight"
+  PR_df$threshold_text[PR_df$clade==clade_oi & PR_df$pp==pp_threshold] <- "highlight_text"
+}
+
+p <- ggplot(subset(PR_df, clade %in% clades_oi[1:10] & pp %in% c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 0.95, 1)), aes(recall*100, precision*100, color=pp)) + geom_point()
+p <- p + geom_point(data = subset(PR_df, clade %in% clades_oi[1:10] & threshold=="highlight"), aes(recall*100, precision*100, label=pp), color="orange")
+p <- p + scale_x_continuous(name = "recall (%)", limits = c(0,100)) + scale_y_continuous(name = "precision (%)", limits = c(0,100))
+p <- p + geom_text_repel(data = subset(PR_df, clade %in% clades_oi[1:10] & threshold=="highlight"), inherit.aes = F, aes(x=recall*100,y=precision*100,label=pp), color="orange", size=4.5, show.legend = F)
+p <- p + scale_color_continuous()
+p <- p + facet_wrap(~ clade, ncol = 3, scales = "fixed")
+p <- p + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black"), legend.position = c(1, 0), legend.justification = c(1, 0), legend.key.width = unit(x = 1, units = "line"), legend.title.align = 0, axis.title.x = element_text(size = 20), axis.title.y = element_text(size = 20), strip.text.x = element_text(size=14))
+ggsave(filename = paste0(res_dir, "PRC_all_facets.svg"), plot = p, dpi = 300, width = 8, height = 11, units = "in")
+ggsave(filename = paste0(res_dir, "PRC_all_facets.png"), plot = p, dpi = 300, width = 8, height = 11, units = "in")
+```
+
+#### Variation in prcision and recall at chosen thresholds
+We may be interested in knowing how much does precision and recall vary for every individual simulation, rather than pooled data. Lets assess how much precision and recall vary at the chosen threshold for every clade.
+```{r summary_PRC_variation }
+clades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale", "Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo",3))
+alphas_oi <- c(1,1,1,0.5,0.25,0.25,1,0.25,0.5,0.5)
+pp_thresholds <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75,0.9,0.9,0.9)
+config_oi <- 1
+n_sims <- 1:5
+
+library(phytools)
+
+PR_df <- as.data.frame(matrix(data=NA, nrow = length(clades_oi)*5, ncol=6, dimnames = list(NULL, c("clade", "pp_threshold", "sim_n", "num_jumps", "precision", "recall"))))
+
+PR_var_df <- as.data.frame(matrix(data=NA, nrow = length(clades_oi), ncol=10, dimnames = list(NULL, c("subclade", "pp_threshold", "min_num_jumps", "max_num_jumps", "overall_precision", "min_precision", "max_precision", "overall_recall", "min_recall", "max_recall"))))
+
+cnt <- 1
+for(clade_n in 1:length(clades_oi)){
+  clade_oi <- clades_oi[clade_n]
+  parent_oi <- p_folders[clade_n]
+  pp_cutoff <- pp_threshold <- pp_thresholds[clade_n]
+  alpha_oi <- alphas_oi[clade_n]
+  
+  comparison_matrix <- matrix(data = 0, nrow = length(n_sims), ncol = 4, dimnames = list(n_sims,c("TP", "TN", "FP", "FN")))
+ 
+  for(sim_n in n_sims){
+    tryCatch({
+      tree_pp <- read.newick(file = paste0(res_dir,clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_geigerSim", sim_n, ".post"))
+    }, error=function(e){
+      print(e)
+    }, finally = {
+      actual_jump_details <- read.csv(paste0(res_dir, clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_geigerSim", sim_n, ".details"), header = T, stringsAsFactors = F)
+      actual_jump_edges <- which(actual_jump_details$jumps>0)
+      actual_jump_col <- sapply(actual_jump_details$effect_Jump[actual_jump_edges], function(x) ifelse(x<0,"red","blue"))
+      actual_jump_size <- sapply(actual_jump_details$effect_Jump[actual_jump_edges], function(x) sqrt(abs(x)))
+      actual_jump_size <- actual_jump_size/max(actual_jump_size)
+      
+      tp_oi <- length(intersect(which(tree_pp$edge.length>=pp_cutoff), actual_jump_edges)) ##True positives
+      tn_oi <- length(intersect(which(tree_pp$edge.length<pp_cutoff), setdiff(1:length(tree_pp$edge.length), actual_jump_edges))) ##True negatives
+      fp_oi <- length(intersect(which(tree_pp$edge.length>=pp_cutoff), setdiff(1:length(tree_pp$edge.length), actual_jump_edges))) ##False positives
+      fn_oi <- length(intersect(which(tree_pp$edge.length<pp_cutoff), actual_jump_edges)) ##False negatives
+      
+      comparison_matrix[as.character(sim_n),"TP"] <- tp_oi
+      comparison_matrix[as.character(sim_n),"TN"] <- tn_oi
+      comparison_matrix[as.character(sim_n),"FP"] <- fp_oi
+      comparison_matrix[as.character(sim_n),"FN"] <- fn_oi
+      
+      precision_oi <- tp_oi/(tp_oi+fp_oi)
+      recall_oi <- tp_oi/(tp_oi+fn_oi)
+      
+      PR_df[cnt, ] <- c(clade_oi, pp_cutoff, as.character(sim_n), length(actual_jump_edges), round(precision_oi, digits = 2), round(recall_oi, digits = 2))
+      cnt <- cnt + 1
+    })
+  } ##loop over sims
+  
+  inference_summary <- colSums(comparison_matrix)
+  precision_pooled <- inference_summary["TP"]/(inference_summary["TP"]+inference_summary["FP"])
+  recall_pooled <- inference_summary["TP"]/(inference_summary["TP"]+inference_summary["FN"])
+    
+  
+  PR_var_df[clade_n,] <- c(clade_oi, pp_cutoff, min(as.integer(PR_df[PR_df$clade==clade_oi, "num_jumps"]), na.rm = T), max(as.integer(PR_df[PR_df$clade==clade_oi, "num_jumps"]), na.rm = T), round(precision_pooled,2), min(as.numeric(PR_df[PR_df$clade==clade_oi, "precision"]), na.rm = T), max(as.numeric(PR_df[PR_df$clade==clade_oi, "precision"]), na.rm = T), round(recall_pooled,2), min(as.numeric(PR_df[PR_df$clade==clade_oi, "recall"]), na.rm = T), max(as.numeric(PR_df[PR_df$clade==clade_oi, "recall"]), na.rm = T))
+}
+
+write.table(x = PR_var_df, file = paste0(main_dir, "all_clades_PR_variation.tab"), row.names = PR_var_df$subclade)
+```

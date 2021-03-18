@@ -1,0 +1,126 @@
+******************************************************************
+*       Bio++ Maximum Likelihood Computation, version 2.4.0      *
+*                                                                *
+* Authors: J. Dutheil                       Last Modif. 19/02/18 *
+*          B. Boussau                                            *
+*          L. Guéguen                                            *
+*          M. Groussin                                           *
+******************************************************************
+
+Parsing options:
+Parsing file /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/ml_nonhom_Buchnera7a_simul.bpp for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/Buchnera7a_seq_simul_eBranchesEst_eOmegaLower_eGCLess_siteHet_pv.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: yes
+Number of sequences....................: 7
+Number of sites........................: 4000
+Input tree.............................: user
+Input tree file .......................: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simul_intree_eBranchesEst.newick
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+Output tree file ......................: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/Buchnera7a_seq_simul_eBranchesEst_eOmegaLower_eGCLess_siteHet_pv.dnd
+Output tree format ....................: Newick
+Branch lengths.........................: Input
+Heterogeneous model....................: general
+Number of distinct models..............: 2
+StopCodon frequencies distribution ....: quadratic
+StopCodon frequencies distribution ....: quadratic
+Root frequencies ......................: F3X4
+Stationarity assumed...................: no
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: observed
+WARNING!!! Parameter YN98.initFreqs.observedPseudoCount not specified. Default used instead: 0
+WARNING!!! Parameter YN98.kappa not specified. Default used instead: 1
+Parameter found........................: YN98.kappa_1=1
+WARNING!!! Parameter YN98.omega not specified. Default used instead: 1
+Parameter found........................: YN98.omega_1=1
+Model1 is associated to................: 9 node(s).
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: observed
+WARNING!!! Parameter YN98.initFreqs.observedPseudoCount not specified. Default used instead: 0
+WARNING!!! Parameter YN98.kappa not specified. Default used instead: 1
+Parameter found........................: YN98.kappa_2=1
+WARNING!!! Parameter YN98.omega not specified. Default used instead: 1
+Parameter found........................: YN98.omega_2=1
+Model2 is associated to................: 3 node(s).
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=1
+- Category 0 (Pr = 0.2) rate...........: 0.107426
+- Category 1 (Pr = 0.2) rate...........: 0.360097
+- Category 2 (Pr = 0.2) rate...........: 0.699895
+- Category 3 (Pr = 0.2) rate...........: 1.22314
+- Category 4 (Pr = 0.2) rate...........: 2.60944
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Likelihood recursion...................: simple
+Initializing data structure............: Done.
+Number of distinct sites...............: 3709
+Initial log likelihood.................: -83145.0196547495
+Message handler........................: none
+Profiler...............................: none
+Max # ML evaluations...................: 1000000
+Tolerance..............................: 1e-06
+Optimize topology......................: no
+Optimization method....................: FullD
+Algorithm used for derivable parameters: Newton
+Reparametrization......................: no
+Molecular clock........................: None
+Optimizing... / 1Optimizing... - 2Optimizing... \ 3Optimizing... - 4Optimizing... / 5Optimizing... - 6Optimizing... \ 7Optimizing... - 8Optimizing... / 9Optimizing... - 10Optimizing... \ 11Optimizing... - 12Optimizing... / 13Optimizing... - 14Optimizing... \ 15Optimizing... - 16Optimizing... / 17Optimizing... - 18Optimizing... \ 19Optimizing... - 20Optimizing... / 21Optimizing... - 22Optimizing... \ 23Optimizing... - 24Optimizing... / 25Optimizing... - 26Optimizing... \ 27Optimizing... - 28Optimizing... / 29Optimizing... - 30Optimizing... \ 31Optimizing... - 32Optimizing... / 33Optimizing... - 34Optimizing... \ 35Optimizing... - 36Optimizing... / 37Optimizing... - 38Optimizing... \ 39Optimizing... - 40Optimizing... / 41Optimizing... - 42Optimizing... \ 43Optimizing... - 44Optimizing... / 45Optimizing... - 46Optimizing... \ 47Optimizing... - 48Optimizing... / 49Optimizing... - 50Optimizing... \ 51Optimizing... - 52Optimizing... / 53Optimizing... - 54Optimizing... \ 55Optimizing... - 56Optimizing... / 57Optimizing... - 58Optimizing... \ 59Optimizing... - 60Optimizing... / 61Optimizing... - 62Optimizing... \ 63Optimizing... - 64Optimizing... / 65Optimizing... - 66Optimizing... \ 67Optimizing... - 68Optimizing... / 69Optimizing... - 70Optimizing... \ 71Optimizing... - 72Optimizing... / 73Optimizing... - 74Optimizing... \ 75Optimizing... - 76Optimizing... / 77Optimizing... - 78Optimizing... \ 79Optimizing... - 80Optimizing... / 81Optimizing... - 82Optimizing... \ 83Optimizing... - 84Optimizing... / 85Optimizing... - 86Optimizing... \ 87Optimizing... - 88Optimizing... / 89Optimizing... - 90Optimizing... \ 91Optimizing... - 92Optimizing... / 93Optimizing... - 94Optimizing... \ 95Optimizing... - 96Optimizing... / 97Optimizing... - 98Optimizing... \ 99Optimizing... - 100Optimizing... / 101Optimizing... - 102Optimizing... \ 103Optimizing... - 104Optimizing... / 105Optimizing... - 106Optimizing... \ 107Optimizing... - 108Optimizing... / 109Optimizing... - 110Optimizing... \ 111Optimizing... - 112Optimizing... / 113Optimizing... - 114Optimizing... \ 115Optimizing... - 116Optimizing... / 117Optimizing... - 118Optimizing... \ 119Optimizing... - 120Optimizing... / 121Optimizing... - 122Optimizing... \ 123Optimizing... - 124Optimizing... / 125Optimizing... - 126Optimizing... \ 127Optimizing... - 128Optimizing... / 129Optimizing... - 130Optimizing... \ 131Optimizing... - 132Optimizing... / 133Optimizing... - 134Optimizing... \ 135Optimizing... - 136Optimizing... / 137Optimizing... - 138Optimizing... \ 139Optimizing... - 140Optimizing... / 141Optimizing... - 142Optimizing... \ 143Optimizing... - 144Optimizing... / 145Optimizing... - 146Optimizing... \ 147Optimizing... - 148Optimizing... / 149Optimizing... - 150Optimizing... \ 151Optimizing... - 152Optimizing... / 153Optimizing... - 154Optimizing... \ 155Optimizing... - 156Optimizing... / 157Optimizing... - 158Optimizing... \ 159Optimizing... - 160Optimizing... / 161Optimizing... - 162Optimizing... \ 163Optimizing... - 164Optimizing... / 165Optimizing... - 166Optimizing... \ 167Optimizing... - 168Optimizing... / 169Optimizing... - 170Optimizing... \ 171Optimizing... - 172Optimizing... / 173Optimizing... - 174Optimizing... \ 175Optimizing... - 176Optimizing... / 177Optimizing... - 178Optimizing... \ 179Optimizing... - 180Optimizing... / 181Optimizing... - 182Optimizing... \ 183Optimizing... - 184Optimizing... / 185Optimizing... - 186Optimizing... \ 187Optimizing... - 188Optimizing... / 189Optimizing... - 190Optimizing... \ 191Optimizing... - 192Optimizing... / 193Optimizing... - 194Optimizing... \ 195Optimizing... - 196Optimizing... / 197Optimizing... - 198Optimizing... \ 199Optimizing... - 200Optimizing... / 201Optimizing... - 202Optimizing... \ 203Optimizing... - 204Optimizing... / 205Optimizing... - 206Optimizing... \ 207Optimizing... - 208Optimizing... / 209Optimizing... - 210Optimizing... \ 211Optimizing... - 212Optimizing... / 213Optimizing... - 214Optimizing... \ 215Optimizing... - 216Optimizing... / 217Optimizing... - 218Optimizing... \ 219Optimizing... - 220Optimizing... / 221Optimizing... - 222Optimizing... \ 223Optimizing... - 224Optimizing... / 225Optimizing... - 226Optimizing... \ 227Optimizing... - 228Optimizing... / 229Optimizing... - 230Optimizing... \ 231Optimizing... - 232Optimizing... / 233Optimizing... - 234Optimizing... \ 235Optimizing... - 236Optimizing... / 237Optimizing... - 238Optimizing... \ 239Optimizing... - 240Optimizing... / 241Optimizing... - 242Optimizing... \ 243Optimizing... - 244Optimizing... / 245Optimizing... - 246Optimizing... \ 247Optimizing... - 248Optimizing... / 249Optimizing... - 250Optimizing... \ 251Optimizing... - 252Optimizing... / 253Optimizing... - 254Optimizing... \ 255Optimizing... - 256Optimizing... / 257Optimizing... - 258Optimizing... \ 259Optimizing... - 260Optimizing... / 261Optimizing... - 262Optimizing... \ 263Optimizing... - 264Optimizing... / 265Optimizing... - 266Optimizing... \ 267Optimizing... - 268Optimizing... / 269Optimizing... - 270Optimizing... \ 271Optimizing... - 272Optimizing... / 273Optimizing... - 274Optimizing... \ 275Optimizing... - 276Optimizing... / 277Optimizing... - 278Optimizing... \ 279Optimizing... - 280Optimizing... / 281Optimizing... - 282Optimizing... \ 283Optimizing... - 284Optimizing... / 285Optimizing... - 286Optimizing... \ 287Optimizing... - 288Optimizing... / 289Optimizing... - 290Optimizing... \ 291Optimizing... - 292Optimizing... / 293Optimizing... - 294Optimizing... \ 295Optimizing... - 296Optimizing... / 297Optimizing... - 298Optimizing... \ 299Optimizing... - 300Optimizing... / 301Optimizing... - 302Optimizing... \ 303Optimizing... - 304Optimizing... / 305Optimizing... - 306Optimizing... \ 307Optimizing... - 308Optimizing... / 309Optimizing... - 310Optimizing... \ 311Optimizing... - 312Optimizing... / 313Optimizing... - 314Optimizing... \ 315Optimizing... - 316Optimizing... / 317Optimizing... - 318Optimizing... \ 319Optimizing... - 320Optimizing... / 321Optimizing... - 322Optimizing... \ 323Optimizing... - 324Optimizing... / 325Optimizing... - 326Optimizing... \ 327Optimizing... - 328Optimizing... / 329Optimizing... - 330Optimizing... \ 331Optimizing... - 332Optimizing... / 333Optimizing... - 334Optimizing... \ 335Optimizing... - 336Optimizing... / 337Optimizing... - 338Optimizing... \ 339Optimizing... - 340Optimizing... / 341Optimizing... - 342Optimizing... \ 343Optimizing... - 344Optimizing... / 345Optimizing... - 346Optimizing... \ 347Optimizing... - 348Optimizing... / 349Optimizing... - 350Optimizing... \ 351Optimizing... - 352Optimizing... / 353Optimizing... - 354Optimizing... \ 355Optimizing... - 356Optimizing... / 357Optimizing... - 358Optimizing... \ 359Optimizing... - 360Optimizing... / 361Optimizing... - 362Optimizing... \ 363Optimizing... - 364Optimizing... / 365Optimizing... - 366Optimizing... \ 367Optimizing... - 368Optimizing... / 369Optimizing... - 370Optimizing... \ 371Optimizing... - 372Optimizing... / 373Optimizing... - 374Optimizing... \ 375Optimizing... - 376Optimizing... / 377Optimizing... - 378Optimizing... \ 379Optimizing... - 380Optimizing... / 381Optimizing... - 382Optimizing... \ 383Optimizing... - 384Optimizing... / 385Optimizing... - 386Optimizing... \ 387Optimizing... - 388Optimizing... / 389Optimizing... - 390Optimizing... \ 391Optimizing... - 392Optimizing... / 393Optimizing... - 394Optimizing... \ 395Optimizing... - 396Optimizing... / 397Optimizing... - 398Optimizing... \ 399Optimizing... - 400Optimizing... / 401Optimizing... - 402Optimizing... \ 403Optimizing... - 404Optimizing... / 405Optimizing... - 406Optimizing... \ 407Optimizing... - 408Optimizing... / 409Optimizing... - 410Optimizing... \ 411Optimizing... - 412Optimizing... / 413Optimizing... - 414Optimizing... \ 415Optimizing... - 416Optimizing... / 417Optimizing... - 418Optimizing... \ 419Optimizing... - 420Optimizing... / 421Optimizing... - 422Optimizing... \ 423Optimizing... - 424Optimizing... / 425Optimizing... - 426Optimizing... \ 427Optimizing... - 428Optimizing... / 429Optimizing... - 430Optimizing... \ 431Optimizing... - 432Optimizing... / 433Optimizing... - 434Optimizing... \ 435Optimizing... - 436Optimizing... / 437Optimizing... - 438Optimizing... \ 439Optimizing... - 440Optimizing... / 441Optimizing... - 442Optimizing... \ 443Optimizing... - 444Optimizing... / 445Optimizing... - 446Optimizing... \ 447Optimizing... - 448Optimizing... / 449Optimizing... - 450Optimizing... \ 451Optimizing... - 452Optimizing... / 453Optimizing... - 454Optimizing... \ 455Optimizing... - 456Optimizing... / 457Optimizing... - 458Optimizing... \ 459Optimizing... - 460Optimizing... / 461Optimizing... - 462Optimizing... \ 463Optimizing... - 464Optimizing... / 465Optimizing... - 466Optimizing... \ 467Optimizing... - 468Optimizing... / 469Optimizing... - 470Optimizing... \ 471Optimizing... - 472Optimizing... / 473Optimizing... - 474Optimizing... \ 475Optimizing... - 476Optimizing... / 477Optimizing... - 478Optimizing... \ 479Optimizing... - 480Optimizing... / 481Optimizing... - 482Optimizing... \ 483Optimizing... - 484Optimizing... / 485Optimizing... - 486
+
+Performed..............................: 487 function evaluations.
+Output tree file ......................: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/Buchnera7a_seq_simul_eBranchesEst_eOmegaLower_eGCLess_siteHet_pv.dnd
+Output tree format ....................: Newick
+Log likelihood.........................: -72960.3358427721
+root.1_Full.theta......................: 0.628498
+root.1_Full.theta1.....................: 0.590025
+root.1_Full.theta2.....................: 0.608583
+root.2_Full.theta......................: 0.377275
+root.2_Full.theta1.....................: 0.457944
+root.2_Full.theta2.....................: 0.453068
+root.3_Full.theta......................: 0.619917
+root.3_Full.theta1.....................: 0.40711
+root.3_Full.theta2.....................: 0.527137
+YN98.kappa_1...........................: 2.32002
+YN98.omega_1...........................: 0.10746
+YN98.1_Full.theta_1....................: 0.638331
+YN98.1_Full.theta1_1...................: 0.679392
+YN98.1_Full.theta2_1...................: 0.629264
+YN98.2_Full.theta_1....................: 0.422385
+YN98.2_Full.theta1_1...................: 0.500114
+YN98.2_Full.theta2_1...................: 0.424603
+YN98.3_Full.theta_1....................: 0.656788
+YN98.3_Full.theta1_1...................: 0.32115
+YN98.3_Full.theta2_1...................: 0.462994
+YN98.kappa_2...........................: 1.55552
+YN98.omega_2...........................: 0.0122754
+YN98.1_Full.theta_2....................: 0.330217
+YN98.1_Full.theta1_2...................: 0.589777
+YN98.1_Full.theta2_2...................: 0.661533
+YN98.2_Full.theta_2....................: 0.287492
+YN98.2_Full.theta1_2...................: 0.567485
+YN98.2_Full.theta2_2...................: 0.470296
+YN98.3_Full.theta_2....................: 0.0826457
+YN98.3_Full.theta1_2...................: 0.520758
+YN98.3_Full.theta2_2...................: 0.690384
+Gamma.alpha............................: 0.733129
+WARNING!!! Parameter output.estimates.alias not specified. Default used instead: 1
+Output estimates to file...............: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/Buchnera7a_seq_simul_eBranchesEst_eOmegaLower_eGCLess_siteHet_pv.params
+
+Posterior rate distribution for dataset:
+
+Pr(0.059108) = 0.216500
+Pr(0.265876) = 0.295250
+Pr(0.606831) = 0.199250
+Pr(1.189867) = 0.088000
+Pr(2.878318) = 0.201000
+
+
+WARNING!!! Parameter output.infos not specified. Default used instead: none
+BppML's done. Bye.
+Total execution time: 0.000000d, 13.000000h, 47.000000m, 0.000000s.

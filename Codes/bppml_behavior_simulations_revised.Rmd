@@ -1,0 +1,331 @@
+---
+title: "Simulations to understand bppml+mapNH behavior"
+output: html_notebook
+---
+
+#### Background
+I previously observed that the synonymous substitution rate estimates for endosymbiont branches inferred using bppml+mapNH are much higher (~10 to 100 fold) than those from YN00 method in PAML. There are two things different between the bpppml + mapNH and the YN00 method-
+1. bppml+mapNH method explicitly accounts for reduction in GC content in endosymbionts by using a non-stationary model and normalization for changes in GC content
+2. bppml+mapNH weighs all possible trajectories from the ancestral to the derived state instead of just counting the parsimonious or most probable trajectories
+
+The second factor could lead to underestimates of synonymous rate by other methods, especially as the branch length increases or selection is weakened (i.e. there are more substitutions).
+
+Here, I will simulate sequences with different combinations of base composition, omega, and branch lengths in the endosymbiont lineage and assess how estimates of dN, dS from the simulated data differ across YN00 and bppml+mapNH.
+
+I prepared simulation parameter files by hand. For the "native" simulation, I borrowed parameters estimated by bppml for a concatenated set of non-HEGs. I created the following config files for simulations-
+1. Buchnera_seq_simul.bpp- native, where GC is lower and omega is 10x smaller for endosymbionts than other clades
+2. Buchnera_seq_simul_eqOmega.bpp- set the omega for endosymbiont clade to same as other clades
+3. Buchnera_seq_simul_eqGC.bpp- set the GC1, GC2, GC3 for endosymbiont clade to same as other clades
+4. Buchnera_seq_simul_eqOmega_eqGC.bpp- changed both omega and GC1/2/3 as above
+
+Moreover, I created a starting tree file ("Buchnera_genome_tree_eqBranch.newick"), where I changed the branch lengths leading to Buchnera and leading to Ishikawaella to values very similar to those ledaing to Pantoea and Erwinia (from ~0.7 and ~1 to ~0.03).
+
+Some raw data was over-written because I mistakenly ran the code again. So, I will take this chance to do all simulations and inference again systematically. I will also implement inference without site-rate heterogeneity, to check if slowly evolving sites carry signal for the reliable estimation of omega. I will also simulate with a slightly different omega value for endosymbiont branches, so that I can check whether bppml+mapNH can reliable estimate small differences.
+```{r simulate_newer_scenarios, eval=F }
+clade_oi <- "Buchnera7a"
+common_dir <- "/Input_data/"
+mapnh_dir <- "/Results/mapNH/"
+mapnh_sd_dir <- paste0(mapnh_dir, clade_oi,"/")
+mapnh_sp_sd_dir <- paste0(mapnh_sd_dir, clade_oi, "/")
+simul_yn00_dir <- paste0("/Results/YN00/", clade_oi, "/", clade_oi, "_simul_yn00_new/")
+system2(command = "mkdir", args = c(simul_yn00_dir))
+
+ori_tree_fn <- paste0(mapnh_sd_dir, clade_oi, "_genome_tree.newick")
+eqBranch_tree_fn <- paste0(mapnh_sd_dir,clade_oi, "_simul_intree_eBranchesEq.newick")
+vLongBranch_tree_fn <- paste0(mapnh_sd_dir,clade_oi, "_simul_intree_eBranchesEst.newick")
+vvLongBranch_tree_fn <- paste0(mapnh_sd_dir,clade_oi, "_simul_intree_eBranchesLonger.newick")
+
+branch_combs <- c("_eBranchesEq", "_eBranchesEst", "_eBranchesLonger")
+omega_combs <- c("_eOmegaEq", "_eOmegaSmaller", "_eOmegaSmaller2", "_eOmegaHigher")
+gc_combs <- c("_eGCEq", "_eGCLess")
+
+for(branch_comb in branch_combs){
+  in_tree_fn <- paste0(mapnh_sd_dir, clade_oi, "_simul_intree", branch_comb,".newick")
+  for(omega_comb in omega_combs){
+    for(gc_comb in gc_combs){
+      param_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",omega_comb, gc_comb,".bpp")
+      out_seq_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".fa")
+      stdout_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".stdout")
+      stderr_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".stderr")
+      system2(command = paste0(mapnh_dir,"bppseqgen"), args = c(paste0("IN_TREE=",in_tree_fn), paste0("OUT_SEQ=",out_seq_fn), paste0("param=",param_fn)), stdout = stdout_fn, stderr = stderr_fn)
+      # print(param_fn)
+    }
+  }
+}
+```
+
+Now, for these long branch simulations, lets estimate dN, dS using bppml+mapNH and paml. First, bppml+mapNH-
+```{r fit_bppml_mapNH_newer, eval=F }
+bppml_config_fn <- paste0(mapnh_sd_dir, clade_oi, "_simulations/ml_nonhom_", clade_oi,"_simul.bpp")
+
+for(branch_comb in branch_combs){
+  in_tree_fn <- paste0(mapnh_sd_dir, clade_oi, "_simul_intree", branch_comb,".newick")
+  for(omega_comb in omega_combs[3:4]){
+    for(gc_comb in gc_combs[2:2]){
+      seq_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".fa")
+      out_tree_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".dnd")
+      out_param_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".params")
+
+      stdout_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,"_bppml.stdout")
+      stderr_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,"_bppml.stderr")
+      system2(command = paste0(mapnh_dir,"bppml"), args = c(paste0("SEQ=",seq_fn), paste0("IN_TREE=",in_tree_fn), paste0("OUT_TREE=",out_tree_fn), paste0("P_OUTPUT=",out_param_fn), paste0("param=",bppml_config_fn)), stdout = stdout_fn, stderr = stderr_fn, wait = F)
+    }
+  }
+}
+```
+
+Lets count dN, dS using mapNH
+```{r countdNdS_mapNH_newer }
+mapnh_config_fn <- paste0(mapnh_sd_dir, clade_oi, "_simulations/map_dNdS_per_branch_", clade_oi,"_simul.bpp")
+
+for(branch_comb in branch_combs){
+  in_tree_fn <- paste0(mapnh_sd_dir, clade_oi, "_simul_intree", branch_comb,".newick")
+  for(omega_comb in omega_combs){
+    for(gc_comb in gc_combs[2:2]){
+      seq_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,".fa")
+      mapnh_tree_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb)
+      out_param_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb)
+
+      stdout_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,"_mapnh.stdout")
+      stderr_fn <- paste0(mapnh_sd_dir, "Buchnera7a_simulations/Buchnera7a_seq_simul",branch_comb,omega_comb, gc_comb,"_mapnh.stderr")
+      system2(command = paste0(mapnh_dir,"mapnh"), args = c(paste0("SEQ=",seq_fn), paste0("MAPNH_TREE=",mapnh_tree_fn), paste0("MODEL=",out_param_fn), paste0("param=",mapnh_config_fn)), stdout = stdout_fn, stderr = stderr_fn, wait = F)
+    }
+  }
+}
+```
+
+Let me also estimate dN, dS using YN00 method for these sequences-
+```{r YN00_estimates_newer }
+simul_yn00_dir <- paste0("/Common_data/", clade_oi, "/", clade_oi, "_simul_yn00/")
+setwd(simul_yn00_dir)
+
+yn00_ctl_fn <- paste0(simul_yn00_dir, clade_oi, "_yn00_unEq_weights_simul_template.ctl")
+yn00_dir <- "/home/saurabh/Softwares/selection/paml4.9g/bin/"
+
+for(branch_comb in branch_combs){
+  for(omega_comb in omega_combs){
+    for(gc_comb in gc_combs[2:2]){
+      seq_fn <- paste0(mapnh_sd_dir, clade_oi, "_simulations/", clade_oi, "_seq_simul",branch_comb,omega_comb, gc_comb,".fa")
+      system2(command = "cp", args = c(seq_fn, "."))
+      seq_fn_local <- paste0(clade_oi, "_seq_simul",branch_comb,omega_comb, gc_comb,".fa")
+      
+      out_fn <- paste0(clade_oi, "_seq_simul", branch_comb, omega_comb, gc_comb,".yn")
+      out_tab_fn <- paste0(clade_oi, "_seq_simul", branch_comb, omega_comb, gc_comb,".tab")
+
+      stdout_fn <- paste0(clade_oi,"_seq_simul",branch_comb,omega_comb, gc_comb,"_yn00.stdout")
+      stderr_fn <- paste0(clade_oi,"_seq_simul",branch_comb,omega_comb, gc_comb,"_yn00.stderr")
+      
+      ctl_fn_oi <- paste0(clade_oi, "_yn00_unEq_weights_simul",branch_comb,omega_comb,gc_comb,".ctl")
+      
+      system2(command = "cp", args = c(yn00_ctl_fn, ctl_fn_oi))
+      system2(command = "echo", args = c(paste0("seqfile = ",seq_fn_local), ">>", ctl_fn_oi))
+      system2(command = "echo", args = c(paste0("outfile = ",out_fn), ">>", ctl_fn_oi))
+
+      system2(command = paste0(yn00_dir,"yn00"), args = c(ctl_fn_oi), stdout = stdout_fn, stderr = stderr_fn, wait = T)
+      system2(command = "sed", args = c("-n", shQuote("139,161 p"), out_fn, ">", out_tab_fn))
+    }
+  }
+}
+```
+
+```{r analyze_bppml_and_yn00_outputs_newer }
+library(phytools)
+library(seqinr)
+
+n_sim <- 8
+n_param <- 2
+
+tree_ori_fn <- paste0(mapnh_sd_dir, clade_oi, "_genome_tree.newick")
+tree_ori <- read.tree(tree_ori_fn)
+
+focal_sister_edge_lengths_df <- as.data.frame(matrix(data = NA, nrow = max(n_sim)*3, ncol = 10))
+colnames(focal_sister_edge_lengths_df) <- c("sim_num", "method", "dN_focal", "dS_focal", "dN_sister", "dS_sister", "omega_focal", "omega_sister", "dNdS_focal", "dNdS_sister")
+sim_n <- 1
+for(branch_comb in c(branch_combs[1:2])){ #c(branch_combs[2:2], branch_combs[1:1])){
+  in_tree_fn <- paste0(mapnh_sd_dir, clade_oi, "_simul_intree", branch_comb,".newick")
+  in_tree <- read.tree(in_tree_fn)
+  for(omega_comb in omega_combs){
+    for(gc_comb in gc_combs[2:2]){
+      tryCatch(
+        {
+          dN_tree_fn <- paste0(mapnh_sd_dir, "Buchnera_simulations_new/Buchnera_seq_simul",branch_comb,omega_comb, gc_comb,".fa.counts_dN.dnd")
+          dS_tree_fn <- paste0(mapnh_sd_dir, "Buchnera_simulations_new/Buchnera_seq_simul",branch_comb,omega_comb, gc_comb,".fa.counts_dS.dnd")
+          
+          dN_tree <- read.tree(dN_tree_fn)
+          dS_tree <- read.tree(dS_tree_fn)
+          
+          dN_bppml_focal <- sum(dN_tree$edge.length[11:12])
+          dN_bppml_sister <- sum(dN_tree$edge.length[8:9])
+          dS_bppml_focal <- sum(dS_tree$edge.length[11:12])
+          dS_bppml_sister <- sum(dS_tree$edge.length[8:9])
+          
+          bppml_out_fn <- paste0(mapnh_sd_dir, clade_oi, "_simulations_new/", clade_oi, "_seq_simul", branch_comb, omega_comb, gc_comb,".params")
+          param_lines <- readLines(bppml_out_fn)
+          model1_line <- param_lines[grepl(pattern = "model1=", x = param_lines, fixed = T)]
+          model2_line <- param_lines[grepl(pattern = "model2=", x = param_lines, fixed = T)]
+          model1_line_elements <- strsplit(x = model1_line, split = "=")[[1]]
+          model2_line_elements <- strsplit(x = model2_line, split = "=")[[1]]
+          omega1 <- as.numeric(strsplit(model1_line_elements[length(model1_line_elements)], ")")[[1]][1])
+          omega2 <- as.numeric(strsplit(model2_line_elements[length(model2_line_elements)], ")")[[1]][1])
+          
+          focal_sister_edge_lengths_df[sim_n,] <- c(paste0("S", sim_n), "bppml", dN_bppml_focal, dS_bppml_focal, dN_bppml_sister, dS_bppml_sister, omega2, omega1, dN_bppml_focal/dS_bppml_focal, dN_bppml_sister/dS_bppml_sister)
+          
+          ##Lets extract estimates from YN00
+          out_tab_fn <- paste0(simul_yn00_dir, clade_oi, "_seq_simul", branch_comb, omega_comb, gc_comb,".tab")
+          yn00_tab <- read.table(out_tab_fn, header = T, stringsAsFactors = F)
+          
+          dN_yn00_focal <- as.numeric(yn00_tab[21,"dN"])
+          dN_yn00_sister <- as.numeric(yn00_tab[10,"dN"])
+          dS_yn00_focal <- as.numeric(yn00_tab[21,"dS"])
+          dS_yn00_sister <- as.numeric(yn00_tab[10,"dS"])
+          omega_yn00_focal <- as.numeric(yn00_tab[21,"omega"])
+          omega_yn00_sister <- as.numeric(yn00_tab[10,"omega"])
+          
+          focal_sister_edge_lengths_df[sim_n+n_sim,] <- c(paste0("S", sim_n), "yn00", dN_yn00_focal, dS_yn00_focal, dN_yn00_sister, dS_yn00_sister, omega_yn00_focal, omega_yn00_sister, dN_yn00_focal/dS_yn00_focal, dN_yn00_sister/dS_yn00_sister)
+          
+          ##Lets get parameters from simulation
+          param_fn <- paste0(mapnh_sd_dir, clade_oi, "_simulations_new/", clade_oi, "_seq_simul",omega_comb, gc_comb,".bpp")
+          param_lines <- readLines(param_fn)
+          model1_line <- param_lines[grepl(pattern = "model1=", x = param_lines, fixed = T)]
+          model2_line <- param_lines[grepl(pattern = "model2=", x = param_lines, fixed = T)]
+          model1_line_elements <- strsplit(x = model1_line, split = "=")[[1]]
+          model2_line_elements <- strsplit(x = model2_line, split = "=")[[1]]
+          omega1 <- as.numeric(strsplit(model1_line_elements[length(model1_line_elements)], ")")[[1]][1])
+          omega2 <- as.numeric(strsplit(model2_line_elements[length(model2_line_elements)], ")")[[1]][1])
+    
+          # focal_br_len <- sum(in_tree$edge.length[11:12])
+          # sister_br_len <- sum(in_tree$edge.length[8:9])
+          
+          dN_focal_simul <- NA_real_ #focal_br_len*(omega2/(1+omega2))
+          dS_focal_simul <- NA_real_ #focal_br_len*(1/(1+omega2))
+          dN_sister_simul <- NA_real_ #sister_br_len*(omega1/(1+omega1))
+          dS_sister_simul <- NA_real_ #sister_br_len*(1/(1+omega1))
+          
+          focal_sister_edge_lengths_df[sim_n+2*n_sim,] <- c(paste0("S", sim_n), "simul", dN_focal_simul, dS_focal_simul, dN_sister_simul, dS_sister_simul, omega2, omega1, NA_real_, NA_real_)
+          sim_n <- sim_n + 1
+        },
+        error=function(e){
+          print(paste0(branch_comb, omega_comb, gc_comb))
+          print("this simulation was not found, did you run it?")
+          print(e)
+        }
+      )
+      
+    }
+  }
+}
+```
+
+```{r plot_substitution_rates_dNdS_newer }
+library(tidyverse)
+library(cowplot)
+library(ggpubr)
+library(viridis)
+
+focal_sister_edge_lengths_df$method <- factor(x = focal_sister_edge_lengths_df$method, levels=c("yn00", "bppml", "simul"))
+focal_sister_edge_lengths_df$sim_num <- factor(x = focal_sister_edge_lengths_df$sim_num, levels=sapply(1:8, function(x) paste0("S", x)))
+for(col_oi in 3:10){
+  focal_sister_edge_lengths_df[,col_oi] <- as.numeric(focal_sister_edge_lengths_df[,col_oi])
+}
+
+dN_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dN_focal, fill=method))
+dN_plot <- dN_plot + geom_bar(stat="identity", position=position_dodge())
+dN_plot <- dN_plot + scale_y_continuous(name = "dN (focal clade)")#, limits = c(0,0.15))
+dN_plot <- dN_plot + scale_x_discrete(name = "")
+dN_plot <- dN_plot  + scale_fill_brewer(palette="Set2")
+dN_plot <- dN_plot + theme(legend.position = "none")
+
+dS_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dS_focal, fill=method))
+dS_plot <- dS_plot + geom_bar(stat="identity", position=position_dodge())
+dS_plot <- dS_plot + scale_y_continuous(name = "dS (focal clade)")#, limits = c(0,4))
+dS_plot <- dS_plot + scale_x_discrete(name = "")
+dS_plot <- dS_plot + scale_fill_brewer(palette="Set2")
+dS_plot <- dS_plot + theme(legend.position = "none")
+
+omega_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = omega_focal, fill=method))
+omega_plot <- omega_plot + geom_bar(stat="identity", position=position_dodge())
+omega_plot <- omega_plot + scale_y_continuous(name = expression(omega~" (focal clade)"))#, limits = c(0,0.13))
+omega_plot <- omega_plot + scale_x_discrete(name = "")
+omega_plot <- omega_plot + scale_fill_brewer(palette="Set2")
+omega_plot <- omega_plot + theme(legend.position = c(0.1,0.8), legend.title.align = 0.5)
+
+dNdS_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dNdS_focal, fill=method))
+dNdS_plot <- dNdS_plot + geom_bar(stat="identity", position=position_dodge())
+dNdS_plot <- dNdS_plot + scale_y_continuous(name = "dN/dS (focal clade)")#, limits = c(0,0.13))
+dNdS_plot <- dNdS_plot + scale_x_discrete(name = "")
+dNdS_plot <- dNdS_plot + scale_fill_brewer(palette="Set2")
+dNdS_plot <- dNdS_plot + theme(legend.position = "none")
+
+dN_sister_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dN_sister, fill=method))
+dN_sister_plot <- dN_sister_plot + geom_bar(stat="identity", position=position_dodge())
+dN_sister_plot <- dN_sister_plot + scale_y_continuous(name = "dN (sister clade)")#, limits = c(0,0.15))
+dN_sister_plot <- dN_sister_plot + scale_x_discrete(name = "simulation")
+dN_sister_plot <- dN_sister_plot + scale_fill_brewer(palette="Set2")
+dN_sister_plot <- dN_sister_plot + theme(legend.position = "none")
+
+dS_sister_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dS_sister, fill=method))
+dS_sister_plot <- dS_sister_plot + geom_bar(stat="identity", position=position_dodge())
+dS_sister_plot <- dS_sister_plot + scale_y_continuous(name = "dS (sister clade)")#, limits = c(0,4))
+dS_sister_plot <- dS_sister_plot + scale_x_discrete(name = "")
+dS_sister_plot <- dS_sister_plot + scale_fill_brewer(palette="Set2")
+dS_sister_plot <- dS_sister_plot + theme(legend.position = "none")
+
+omega_sister_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = omega_sister, fill=method))
+omega_sister_plot <- omega_sister_plot + geom_bar(stat="identity", position=position_dodge())
+omega_sister_plot <- omega_sister_plot + scale_y_continuous(name = expression(omega~" (sister clade)"), limits = c(0,0.13))
+omega_sister_plot <- omega_sister_plot + scale_x_discrete(name = "")
+omega_sister_plot <- omega_sister_plot + scale_fill_brewer(palette="Set2")
+omega_sister_plot <- omega_sister_plot + theme(legend.position = "none")
+
+dNdS_sister_plot <- ggplot(focal_sister_edge_lengths_df, aes(x = sim_num, y = dNdS_sister, fill=method))
+dNdS_sister_plot <- dNdS_sister_plot + geom_bar(stat="identity", position=position_dodge())
+dNdS_sister_plot <- dNdS_sister_plot + scale_y_continuous(name = "dN/dS (sister clade)", limits = c(0,0.13))
+dNdS_sister_plot <- dNdS_sister_plot + scale_x_discrete(name = "")
+dNdS_sister_plot <- dNdS_sister_plot + scale_fill_brewer(palette="Set2")
+dNdS_sister_plot <- dNdS_sister_plot + theme(legend.position = "none")
+```
+
+```{r simulation_parameters_schematic_newer }
+schematic_df <- as.data.frame(matrix(NA, nrow = 3*n_sim, ncol = 3))
+colnames(schematic_df) <- c("sim_num", "param_name", "param_value")
+
+branch_comb_values <- c("short", "long", "v long")
+omega_comb_values <- c(0.039, 0.0039, 0.006, 0.13)
+gc_values <- c("equal", "low")
+
+row_cnt <- 1
+sim_n <- 1
+for(branch_comb_n in 1:length(branch_combs[1:2])){
+  for(omega_comb_n in 1:length(omega_combs)){
+    for(gc_comb_n in 2:length(gc_combs)){
+      schematic_df[row_cnt,] <- c(paste0("S",sim_n), "branch length", branch_comb_values[branch_comb_n])
+      schematic_df[row_cnt+1,] <- c(paste0("S",sim_n), "omega", omega_comb_values[omega_comb_n])
+      schematic_df[row_cnt+2,] <- c(paste0("S",sim_n), "GC", gc_values[gc_comb_n])
+      
+      sim_n <- sim_n + 1
+      row_cnt <- row_cnt + 3
+    }
+  }
+}
+
+schematic_df$param_name <- factor(schematic_df$param_name, levels = c("GC", "omega", "branch length"))
+
+s_plot <- ggplot(schematic_df, aes(x = sim_num, y = param_name)) + geom_tile( fill = grey(0.75), color="black") + geom_text(aes(label=param_value), angle=45, size=2.5)
+s_plot <- s_plot + coord_equal()
+s_plot <- s_plot + scale_y_discrete(name="", labels=c("GC", expression(~omega), "branch length")) + scale_x_discrete(name="")
+s_plot <- s_plot + theme(axis.text.x = element_text(size = 9), axis.text.y = element_text(size = 9), axis.ticks = element_blank(), axis.line = element_blank(), plot.caption = element_text(size=15, hjust = 0.5, margin = margin(t=-10)))
+# s_plot <- s_plot + labs(caption="simulation number")
+s_plot <- s_plot
+
+save_plot(filename = paste0("/Results/dNdS/Buchnera/simulation_schematic_newer.svg"), plot = s_plot, ncol = 1, nrow = 1, base_height = 2.5, base_aspect_ratio = 2.5)
+save_plot(filename = paste0("/Results/dNdS/Buchnera/simulation_schematic_newer.png"), plot = s_plot, ncol = 1, nrow = 1, base_height = 2.5, base_aspect_ratio = 2.5)
+
+multi_plot <- ggarrange(omega_plot, dN_plot, dS_plot, omega_sister_plot, dN_sister_plot, dS_sister_plot, ncol = 3, nrow = 2, align = "hv")
+
+final_plot <- ggdraw(plot = multi_plot) + draw_plot(s_plot + theme(), 0.37,0.75,0.27,0.27)
+
+save_plot(filename = paste0("/Results/dNdS/Buchnera/simulation_results_dN_dS_omega_newer.svg"), plot = final_plot,ncol = 3, nrow = 2)
+save_plot(filename = paste0("/Results/dNdS/Buchnera/simulation_results_dN_dS_omega_newer.png"), plot = final_plot,ncol = 3, nrow = 2)
+```
+
+So, it seems that bppml+mapNH does very well even with very long branch lengths. Moreover, it can also distinguish an omega of 0.003 and 0.006 with long branches. However, if branches are very long, synonymous sites must be saturated, and its not clear how bppml+mapNH obtains information to estimate omega accurately. 

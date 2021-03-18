@@ -1,0 +1,700 @@
+---
+title: "Analysis of repair enzyme presence/absence"
+output: html_notebook
+---
+
+
+```{r common_processing }
+library(phytools)
+library(rncl)
+library(seqinr)
+library(parallel)
+library(tidyverse)
+library(cowplot)
+# library(ggtree)
+
+main_dir <- "/"
+common_dir <- paste0(main_dir, "Input_data/phylogenies/")
+gd_base <- paste0(main_dir, "Input_data/GTDB/GTDB_")
+enz_input_dir <- paste0(main_dir, "Input_data/repair_enzymes/")
+res_dir <- paste0(main_dir, "Results/repair_enzymes/")
+jump_common_dir <- "/Results/jump_analysis/"
+
+enz_list_fn <- "repair_enzyme_list.txt"
+repair_enz_list <- read.csv(file = paste0(enz_input_dir,enz_list_fn), stringsAsFactors = F, header = F)
+
+n_cores <- 2
+
+GTDB_14k_metadata <- read.delim(file = paste0(main_dir, "Input_data/phylogenies/GTDB_bac_metadata_r80_pruned0.01.tsv"), header = T, row.names = 1, stringsAsFactors = F)
+
+OLclades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale","Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo", 3))
+pp_cutoffs <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75, 0.9,0.9,0.9)
+alphas_oi <- c(1,1,1,0.5,0.25,0.25,1,0.25,0.5,0.5)
+config_oi <- 1
+
+get_genera_sp_names <- function(full_GTDB_taxonomy){
+  GTDB_fields <- strsplit(x = full_GTDB_taxonomy, split = ";g__")[[1]]
+  return(paste0("g__", GTDB_fields[2]))
+}
+```
+
+
+Lets check if the focal clades have exceptional patterns i.e. are some enzymes exclusively lost or gained in these?
+
+First, lets identify the number of hits in focal vs related taxa and the respective bit-scores
+```{r identify_exceptional_enz }
+all_feature_changes <- read.table(file = paste0(jump_common_dir, "all_features_changes_table.tab"), stringsAsFactors = F)
+bitscore_ratios_df <- data.frame(matrix(NA, nrow = nrow(all_feature_changes), ncol = length(repair_enz_list$V1), dimnames = list(rownames(all_feature_changes), repair_enz_list$V1)))
+
+##lets identify status of each enzyme in focal vs related genomes
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details4 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries4.tab"), stringsAsFactors = F)
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  jumpClade_details5$repairEnz_av <- jumpClade_details5$repairEnz_analysis
+  
+  for(jumpNum_oi in which(jumpClade_details5$repairEnz_analysis)){#only for those jumps where enzyme data was available
+    
+    print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+    
+    jumpDir <- paste0(jump_common_dir, OLclade_oi, "_jump", jumpNum_oi, "/")
+    
+    if(jumpClade_details4[paste0("jump",jumpNum_oi), "genomes_downloaded"]){
+      all_accNums <- read.table(paste0(jumpDir, "ass_fn_GCFids_found.txt"), stringsAsFactors = F)
+      GTDB_accNums_map <- all_accNums$V1
+      GTDB_labels <- read.table(paste0(jumpDir, "required_GCFonly_ids.txt"), stringsAsFactors = F)
+      names(GTDB_accNums_map) <- GTDB_labels$V1
+    }else{
+      focal_clade_tree_pruned <- read.tree(file = paste0(jumpDir, "pruned_tree.newick"))
+      GTDB_labels <- focal_clade_tree_pruned$tip.label
+      all_accNums <- read.table(paste0(jumpDir, "ass_fn_GCFids_found.txt"), stringsAsFactors = F)
+      GTDB_accNums_map <- all_accNums$V1[(1+length(all_accNums$V1) - length(focal_clade_tree_pruned$tip.label)):length(all_accNums$V1)]
+      names(GTDB_accNums_map) <- GTDB_labels
+    }
+    
+    nested_focalTip_labels <- tryCatch({
+      read.table(file = paste0(jumpDir, "nestedFocalTips.tab"), stringsAsFactors = F)$V1
+    }, error=function(e){
+      print(e)
+      return(NA)
+    })
+    
+    all_protAccNums <- read.table(file = paste0(jumpDir,"prot_fn_GCFids_found.txt"),stringsAsFactors = F, header = F)
+    all_protAccNums <- unique(all_protAccNums$V1)
+    enz_data <- read.table(file = paste0(jumpDir, "repair_enz_pa.tab"), stringsAsFactors = F, header = T)
+    enz_available_protAccNums <- rownames(enz_data)
+    
+    focal_GTDBLabels <- read.table(paste0(jumpDir, OLclade_oi,"_jump",jumpNum_oi,"_focalGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    focal_GTDBLabels_valid <- setdiff(focal_GTDBLabels$V1, nested_focalTip_labels)
+    focal_accNums <- sapply(focal_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    sis_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_sisGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    sis_GTDBLabels_valid <- setdiff(sis_GTDBLabels$V1, nested_focalTip_labels)
+    sis_accNums <- sapply(sis_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    out1_accNums <- NA
+    if(jumpClade_details5[paste0("jump",jumpNum_oi), "depth"] %in% c("outgroup1", "outgroup2")){
+      out1_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_out1GTDBLabels.tab"), stringsAsFactors = F, header = F)
+      out1_GTDBLabels_valid <- setdiff(out1_GTDBLabels$V1, nested_focalTip_labels)
+      out1_accNums <- sapply(out1_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    }
+    
+    out2_accNums <- NA
+    if(jumpClade_details5[paste0("jump",jumpNum_oi), "depth"]=="outgroup2"){
+      out2_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_out2GTDBLabels.tab"), stringsAsFactors = F, header = F)
+      out2_GTDBLabels_valid <- setdiff(out2_GTDBLabels$V1, nested_focalTip_labels)
+      out2_accNums <- sapply(out2_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    }
+    
+    valid_protAccNums <- setdiff(intersect(c(focal_accNums, sis_accNums,out1_accNums), enz_available_protAccNums), NA)
+    focal_accNums_av <- intersect(focal_accNums, valid_protAccNums)
+    related_accNums_av <- intersect(c(sis_accNums,out1_accNums), valid_protAccNums)
+    if(length(focal_accNums_av)==0 || length(related_accNums_av)==0){
+      jumpClade_details5[paste0("jump", jumpNum_oi), "repairEnz_av"] <- F
+      print("genomes not available in either clade, skipping!")
+      next
+    }
+    
+    repair_enz_pa_matrix <- read.table(file = paste0(jumpDir,"repair_enz_pa.tab"), stringsAsFactors = F)
+    repair_enz_bit_matrix <- read.table(file = paste0(jumpDir,"repair_enz_max_bitscores.tab"), stringsAsFactors = F)
+    
+    enz_pa_status <- matrix(,nrow=0,ncol=4) ##matrix to store presence/absence status
+    enz_bit_status <- matrix(,nrow=0,ncol=4) ##matrix to store bit scores
+    colnames(enz_pa_status) <- c("enz", "status_focal", "status_related", "event")
+    colnames(enz_bit_status) <- c("enz", "median_bitscore_focal", "median_bitscore_related", "event")
+    for(enz_oi in repair_enz_list$V1){
+      nhits_focal <- unique(repair_enz_pa_matrix[focal_accNums_av,enz_oi])
+      nhits_related <- unique(repair_enz_pa_matrix[related_accNums_av,enz_oi])
+      if(length(nhits_focal)==1 & length(nhits_related)==1){#if number of hits are identical/homogeneous within related taxa [homogeneous enzN(related)], and (separately) in focal taxa [homogeneous enzN(focal)]
+        if(nhits_focal==nhits_related){
+          enz_pa_status <- rbind(enz_pa_status, c(enz_oi, nhits_focal, nhits_related, 0))
+        }else{#nhits_focal!=nhits_related
+          if(nhits_focal>0 & nhits_related==0){
+            enz_pa_status <- rbind(enz_pa_status, c(enz_oi, nhits_focal, nhits_related, 1))
+          }else if(nhits_focal==0 & nhits_related>0){
+            enz_pa_status <- rbind(enz_pa_status, c(enz_oi, nhits_focal, nhits_related, -1))
+          }else{#if neither focal clade or related clades have 0 hits, we cant decide whether a "good" copy is lost or gained in focal clade
+            enz_pa_status <- rbind(enz_pa_status, c(enz_oi, NA, NA, 0))
+          }
+        }#nhits_focal!=nhits_related
+      }else{ #if n_hits are not identical within focal and (separately) related taxa
+        enz_pa_status <- rbind(enz_pa_status, c(enz_oi, NA, NA, NA))
+        print("either focal or related clade has hetereogenous number of enzyme candidates")
+      } #if n_hits is not identical/homoegenous within focal and (separately) related taxa
+      
+      ##find enzymes with aberrant bit-scores in the focal clade
+      #only if the enzymes are present (bitscores are -Inf if enzymes are absent, a quirk of my programming)
+      if(!any(is.infinite(repair_enz_bit_matrix[focal_accNums_av,enz_oi])) & !any(is.infinite(repair_enz_bit_matrix[related_accNums_av,enz_oi]))){
+        bit_score_ratio <- median(repair_enz_bit_matrix[focal_accNums_av,enz_oi], na.rm = T)/median(repair_enz_bit_matrix[related_accNums_av,enz_oi], na.rm = T) ##ratio of median bit scores in focal vs related taxa
+        
+        if(!is.infinite(bit_score_ratio) & !is.nan(bit_score_ratio)){
+          bitscore_ratios_df[paste0(OLclade_oi,"_jump", jumpNum_oi), enz_oi] <- bit_score_ratio
+          if(bit_score_ratio < 0.75){ #if focal clade has poorer hit, the original enzyme is lost
+            enz_event <- -1
+          }else if(bit_score_ratio > 1.25){ #if the focal clade has better hit, this enzyme is perhaps gained 
+            enz_event <- 1
+          }else{
+            enz_event <- 0
+          }
+          enz_bit_status <- rbind(enz_bit_status, c(enz_oi, median(repair_enz_bit_matrix[focal_accNums_av,enz_oi]),median(repair_enz_bit_matrix[related_accNums_av,enz_oi]), enz_event))
+        }
+      }
+    }
+    
+    enz_pa_status
+    write.table(enz_pa_status, file = paste0(jumpDir,"enz_PA_status.tab"), quote = F, row.names = F)
+    write.table(enz_bit_status, file = paste0(jumpDir,"enz_bitscore_status.tab"), quote = F, row.names = F)
+  }
+  write.table(jumpClade_details5, file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), quote = F)
+}
+write.table(bitscore_ratios_df, file = paste0(jump_common_dir, "levolution_jumps_repair_enzyme_bitscore_ratios.tab"), quote = F)
+```
+
+Lets us now identify enzymes which are frequently gained or lost. We will do this separately for clades that have increased or decreased GC content.
+```{r identify_freq_deviant_enzymes }
+deviant_enz_bits1 <- matrix(data = 0, nrow = nrow(repair_enz_list), ncol = 2, dimnames = list(repair_enz_list$V1,c("n_gained","n_lost")))
+deviant_enz_PA1 <- deviant_enz_PA2 <- deviant_enz_bits2 <- deviant_enz_bits1
+
+all_feature_changes <- read.table(file = paste0(jump_common_dir, "all_features_changes_table.tab"), stringsAsFactors = F)
+bitscore_ratios_df <- data.frame(matrix(NA, nrow = nrow(all_feature_changes), ncol = length(repair_enz_list$V1), dimnames = list(rownames(all_feature_changes), repair_enz_list$V1)))
+
+###identify clades with increased or decreased GC-
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  
+  for(jumpNum_oi in which(jumpClade_details5$repairEnz_av)){#only for those jumps where enzyme data was available
+    if(is.na(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"])){
+      # print("GC content not available!")
+      next
+    }
+    
+    print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+    jumpDir <- paste0(jump_common_dir, OLclade_oi, "_jump", jumpNum_oi, "/")
+    
+    enz_pa_status <- read.table(file = paste0(jumpDir,"enz_PA_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    enz_bit_status <- read.table(file = paste0(jumpDir,"enz_bitscore_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    
+    ##based on bit scores
+    for(enz_oi in repair_enz_list$V1){ #rownames(enz_bit_status)){
+      event_recorded <- F
+      if(enz_oi %in% rownames(enz_pa_status) & !is.na(enz_pa_status[enz_oi,"event"]) ){
+        ##the following assumes if 2 hits are found (status_focal and/or status_related > 1), one of them is the real ortholog and related are (functionally different) remote homologs
+        ##**this may not be true**
+        # print(enz_oi)
+        # if(is.na(enz_pa_status[enz_oi,"status_focal"]) || is.na(enz_pa_status[enz_oi,"status_related"])){
+        #   # print("enzyme status could not be ascertained")
+        #   next
+        # }
+        
+        if(enz_pa_status[enz_oi,"event"]==1){
+          # print("gained based on PA")
+          if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+            deviant_enz_PA1[enz_oi,"n_gained"] <- deviant_enz_PA1[enz_oi,"n_gained"] + 1
+          }else{
+            deviant_enz_PA2[enz_oi,"n_gained"] <- deviant_enz_PA2[enz_oi,"n_gained"] + 1
+          }
+          event_recorded <- T
+        }else if(enz_pa_status[enz_oi,"event"]==-1){
+          # print("lost based on PA")
+          if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+            deviant_enz_PA1[enz_oi,"n_lost"] <- deviant_enz_PA1[enz_oi,"n_lost"] + 1
+          }else{
+            deviant_enz_PA2[enz_oi,"n_lost"] <- deviant_enz_PA2[enz_oi,"n_lost"] + 1
+          }
+          event_recorded <- T
+        }
+      } #check if enz status exists in PA file
+      
+      if(!enz_oi %in% rownames(enz_bit_status) | event_recorded) next
+      if(enz_bit_status[enz_oi,"event"]==1){#gain event
+        # print("gained based on bit-score")
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_bits1[enz_oi,"n_gained"] <- deviant_enz_bits1[enz_oi,"n_gained"] + 1
+        }else{
+          deviant_enz_bits2[enz_oi,"n_gained"] <- deviant_enz_bits2[enz_oi,"n_gained"] + 1
+        }
+      }else if(enz_bit_status[enz_oi,"event"]==-1){#loss event
+        # print("lost based on bit-score")
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_bits1[enz_oi,"n_lost"] <- deviant_enz_bits1[enz_oi,"n_lost"] + 1
+        }else{
+          deviant_enz_bits2[enz_oi,"n_lost"] <- deviant_enz_bits2[enz_oi,"n_lost"] + 1
+        }
+      }
+    }
+    
+  }
+}
+
+# deviant_enz_bits1 <- deviant_enz_bits1/length(which(jumpClade_details5$repairEnz_av))
+# deviant_enz_bits2 <- deviant_enz_bits2/length(which(jumpClade_details5$repairEnz_av))
+    
+write.table(deviant_enz_PA1+deviant_enz_bits1, file = paste0(jump_common_dir,"levolution_downwardJumps_deviant_enz.tab"), quote=F)
+write.table(deviant_enz_PA2+deviant_enz_bits2, file = paste0(jump_common_dir,"levolution_upwardJumps_deviant_enz.tab"), quote=F)
+```
+
+Lets us try to find ratios of median bit scores (focal clade vs related clades) for all jumps that are analyzable.
+```{r calculate_heatmap_bitscore_changes }
+bit_score_ratios_df <- 
+  
+all_feature_changes <- read.table(file = paste0(jump_common_dir, "all_features_changes_table.tab"), stringsAsFactors = F)
+
+###identify clades with increased or decreased GC-
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  
+  for(jumpNum_oi in which(jumpClade_details5$repairEnz_av)){#only for those jumps where enzyme data was available
+    
+    print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+    
+    jumpDir <- paste0(jump_common_dir, OLclade_oi, "_jump", jumpNum_oi, "/")
+    
+    all_accNums <- read.table(paste0(jumpDir, "ass_fn_GCFids_found.txt"), stringsAsFactors = F)
+    GTDB_accNums_map <- all_accNums$V1
+    GTDB_labels <- read.table(paste0(jumpDir, "required_GCFonly_ids.txt"), stringsAsFactors = F)
+    names(GTDB_accNums_map) <- GTDB_labels$V1
+    
+    nested_focalTip_labels <- tryCatch({
+      read.table(file = paste0(jumpDir, "nestedFocalTips.tab"), stringsAsFactors = F)$V1
+    }, error=function(e){
+      print(e)
+      return(NA)
+    })
+    
+    focal_GTDBLabels <- read.table(paste0(jumpDir, OLclade_oi,"_jump",jumpNum_oi,"_focalGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    focal_GTDBLabels_valid <- setdiff(focal_GTDBLabels$V1, nested_focalTip_labels)
+    focal_accNums <- sapply(focal_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    sis_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_sisGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    sis_GTDBLabels_valid <- setdiff(sis_GTDBLabels$V1, nested_focalTip_labels)
+    sis_accNums <- sapply(sis_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    out1_accNums <- NA
+    if(jumpClade_details5[paste0("jump",jumpNum_oi), "depth"] %in% c("outgroup1", "outgroup2")){
+      out1_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_out1GTDBLabels.tab"), stringsAsFactors = F, header = F)
+      out1_GTDBLabels_valid <- setdiff(out1_GTDBLabels$V1, nested_focalTip_labels)
+      out1_accNums <- sapply(out1_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    }
+    
+    out2_accNums <- NA
+    if(jumpClade_details5[paste0("jump",jumpNum_oi), "depth"]=="outgroup2"){
+      out2_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_out2GTDBLabels.tab"), stringsAsFactors = F, header = F)
+      out2_GTDBLabels_valid <- setdiff(out2_GTDBLabels$V1, nested_focalTip_labels)
+      out2_accNums <- sapply(out2_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    }
+    
+    enz_data <- read.table(file = paste0(jumpDir, "repair_enz_pa.tab"), stringsAsFactors = F, header = T)
+    enz_available_protAccNums <- rownames(enz_data)
+    focal_accNums_av <- intersect(focal_accNums, enz_available_protAccNums)
+    related_accNums_av <- intersect(c(sis_accNums,out1_accNums),  enz_available_protAccNums)
+    
+    enz_pa_status <- read.table(file = paste0(jumpDir,"enz_PA_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    enz_bit_status <- read.table(file = paste0(jumpDir,"enz_bitscore_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    
+    ##based on bit scores
+    for(enz_oi in rownames(enz_bit_status)){
+      if(enz_bit_status[enz_oi,"event"]==1){
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_bits1[enz_oi,"n_gained"] <- deviant_enz_bits1[enz_oi,"n_gained"] + 1
+        }else{
+          deviant_enz_bits2[enz_oi,"n_gained"] <- deviant_enz_bits2[enz_oi,"n_gained"] + 1
+        }
+        
+      }else if(enz_bit_status[enz_oi,"event"]==-1){
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_bits1[enz_oi,"n_lost"] <- deviant_enz_bits1[enz_oi,"n_lost"] + 1
+        }else{
+          deviant_enz_bits2[enz_oi,"n_lost"] <- deviant_enz_bits2[enz_oi,"n_lost"] + 1
+        }
+      }
+    }
+    
+    ##based on number of direct hits
+    deviant_enz_combined1 <- deviant_enz_bits1
+    deviant_enz_combined2 <- deviant_enz_bits2
+    for(enz_oi in rownames(enz_bit_status)){
+      ##the following assumes if 2 hits are found (status_focal and/or status_related > 1), one of them is the real ortholog and relateds are (functionally different) remote homologs
+      ##**this may not be true**
+      print(enz_oi)
+      if(is.na(enz_pa_status[enz_oi,"status_focal"]) || is.na(enz_pa_status[enz_oi,"status_related"])){
+        print("enzymes had hetereogeneous hit numbers")
+        next
+      }
+      if(enz_pa_status[enz_oi,"status_focal"]>0 & enz_pa_status[enz_oi,"status_related"]==0){
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_combined1[enz_oi,"n_gained"] <- deviant_enz_combined1[enz_oi,"n_gained"] + 1
+        }else{
+          deviant_enz_combined2[enz_oi,"n_gained"] <- deviant_enz_combined2[enz_oi,"n_gained"] + 1
+        }
+        
+      } else if(enz_pa_status[enz_oi,"status_related"]>0 & enz_pa_status[enz_oi,"status_focal"]==0){
+        if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0){
+          deviant_enz_combined1[enz_oi,"n_lost"] <- deviant_enz_combined1[enz_oi,"n_lost"] + 1
+        }else{
+          deviant_enz_combined1[enz_oi,"n_lost"] <- deviant_enz_combined1[enz_oi,"n_lost"] + 1
+        }
+      }
+    }
+  }
+}
+
+deviant_enz_bits1 <- deviant_enz_bits1/length(which(jumpClade_details5$repairEnz_av))
+deviant_enz_bits2 <- deviant_enz_bits2/length(which(jumpClade_details5$repairEnz_av))
+    
+write.table(deviant_enz_combined1, file = paste0(jump_common_dir,"levolution_downwardJumps_deviant_enz.tab"), quote=F)
+write.table(deviant_enz_combined2, file = paste0(jump_common_dir,"levolution_upwardJumps_deviant_enz.tab"), quote=F)
+```
+
+Lets look at gain/loss of any enzyme in pathways. The pathway combinations are borrowed from Foster et al 2015.
+```{r identify_freq_deviant_pathways }
+pol_pathway <- c("umuD", "umuC", "dinB")
+alk_pathway1 <- c("alkA", "tagA")
+alk_pathway2 <- c("ada", "ogt")
+BER_pathway1 <- c("nth", "nei")
+BER_pathway2 <- c("xth", "nfo")
+mutMY_pathway <- c("mutM", "mutY")
+MMR_pathway <- c("mutS", "mutL", "mutH")
+
+pathway_list <- list(pol_pathway, alk_pathway1, alk_pathway2, BER_pathway1, BER_pathway2, mutMY_pathway, MMR_pathway)
+names(pathway_list) <- c("DNA_pols", "alkylation1", "alkylation2", "BER1", "BER2", "mutMY", "MMR")
+
+###identify clades with increased or decreased GC-
+set_size <- 40
+set_n <- 1
+dNdS_gc3_data <- read.table(file = paste0(dNdS_dir,"focal_clades_dNdS_gc3_metadata_orthologs", set_size,"_set",set_n,".tab"), stringsAsFactors = F,header = T)
+
+focal_clades1 <- dNdS_gc3_data$focal_clade[which(dNdS_gc3_data$gene_set=="nonHEG" & dNdS_gc3_data$eqDirectionA==-1)]
+focal_clades2 <- dNdS_gc3_data$focal_clade[which(dNdS_gc3_data$gene_set=="nonHEG" & dNdS_gc3_data$eqDirectionA==1)]
+
+##for focal clades with reduced gc content
+deviant_enz_bits1 <- matrix(data = 0, nrow = length(pathway_list), ncol = 2, dimnames = list(names(pathway_list),c("n_gained","n_lost")))
+
+for(focal_clade in focal_clades1){
+  clade_oi <- focal_clade_details[focal_clade,"parent_clade"]
+  
+  sd_dir <- paste0(common_dir,clade_oi,"/")
+  mapnh_sd_dir <- paste0(mapnh_dir,clade_oi,"/")
+
+  enz_pa_status <- read.table(file = paste0(res_dir,focal_clade,"_exclusive_enz_PA.tab"), stringsAsFactors = F, header = T, row.names = 1)
+  enz_bit_status <- read.table(file = paste0(res_dir,focal_clade,"_exclusive_enz_bitscore.tab"), stringsAsFactors = F, header = T, row.names = 1)
+  
+  for(pathway_oi in pathway_list){
+    for(enz_oi in pathway_oi){
+      if(enz_bit_status[enz_oi,"event"]==1){
+       deviant_enz_bits1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] <- deviant_enz_bits1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] + 1
+    } else if(enz_bit_status[enz_oi,"event"]==-1){
+        deviant_enz_bits1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] <- deviant_enz_bits1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] + 1
+    }
+    }
+  }
+  
+  deviant_enz_combined1 <- deviant_enz_bits1
+  for(enz_oi in rownames(enz_pa_status)){
+  if(!(enz_oi %in% unlist(pathway_list))){break}
+    ##the following assumes if 2 hits are found (status_focal/status_related > 1), one of them is the real ortholog and relateds are (functionally different) remote homologs
+    ##**this may not be true**
+    print(enz_oi)
+    if(enz_pa_status[enz_oi,"status_focal"]>0 & enz_pa_status[enz_oi,"status_related"]==0){
+      deviant_enz_combined1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] <- deviant_enz_combined1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] + 1
+    } else if(enz_pa_status[enz_oi,"status_related"]>0 & enz_pa_status[enz_oi,"status_focal"]==0){
+      deviant_enz_combined1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] <- deviant_enz_combined1[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] + 1
+    }
+  }
+}
+
+
+###for focal clades with increased gc content
+deviant_enz_bits2 <- matrix(data = 0, nrow = length(pathway_list), ncol = 2, dimnames = list(names(pathway_list),c("n_gained","n_lost")))
+
+for(focal_clade in focal_clades2){
+  clade_oi <- focal_clade_details[focal_clade,"parent_clade"]
+  
+  sd_dir <- paste0(common_dir,clade_oi,"/")
+  mapnh_sd_dir <- paste0(mapnh_dir,clade_oi,"/")
+
+  enz_pa_status <- read.table(file = paste0(res_dir,focal_clade,"_exclusive_enz_PA.tab"), stringsAsFactors = F, header = T, row.names = 1)
+  enz_bit_status <- read.table(file = paste0(res_dir,focal_clade,"_exclusive_enz_bitscore.tab"), stringsAsFactors = F, header = T, row.names = 1)
+  
+  for(enz_oi in rownames(enz_bit_status)){
+  if(!(enz_oi %in% unlist(pathway_list))){break}
+    
+    if(enz_bit_status[enz_oi,"event"]==1){
+      deviant_enz_bits2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] <- deviant_enz_bits2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] + 1
+    } else if(enz_bit_status[enz_oi,"event"]==-1){
+      deviant_enz_bits2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] <- deviant_enz_bits2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] + 1
+    }
+  }
+  
+  deviant_enz_combined2 <- deviant_enz_bits2
+  for(enz_oi in rownames(enz_pa_status)){
+  if(!(enz_oi %in% unlist(pathway_list))){break}
+    ##the following assumes if 2 hits are found (status_focal/status_related > 1), one of them is the real ortholog and relateds are (functionally different) remote homologs
+    ##**this may not be true**
+    print(enz_oi)
+    if(enz_pa_status[enz_oi,"status_focal"]>0 & enz_pa_status[enz_oi,"status_related"]==0){
+      deviant_enz_combined2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] <- deviant_enz_combined2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_gained"] + 1
+    } else if(enz_pa_status[enz_oi,"status_related"]>0 & enz_pa_status[enz_oi,"status_focal"]==0){
+      deviant_enz_combined2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] <- deviant_enz_combined2[which(sapply(pathway_list, function(x) enz_oi %in% x)),"n_lost"] + 1
+    }
+  }
+}
+
+# deviant_enz_bits1 <- deviant_enz_bits1/length(focal_clades1)
+# deviant_enz_bits2 <- deviant_enz_bits2/length(focal_clades2)
+
+write.table(deviant_enz_combined1, file = paste0(res_dir,"deviant_pathways_GC_reduced_clades.tab"), quote=F)
+write.table(deviant_enz_combined2, file = paste0(res_dir,"deviant_pathways_GC_increased_clades.tab"), quote=F)
+```
+
+Plot data
+```{r plot_repair_enz_data }
+for(focal_clade in rownames(focal_clade_details)){
+  clade_oi <- focal_clade_details[focal_clade,"parent_clade"]
+  print(paste0(focal_clade, " of the parent clade ", clade_oi))
+  
+  sd_dir <- paste0(common_dir,clade_oi,"/")
+  mapnh_sd_dir <- paste0(mapnh_dir,clade_oi,"/")
+
+  GCF_short_names <- read.table(paste0(sd_dir, clade_oi,"_GCF_ids_shortnames.txt"), stringsAsFactors = F, row.names = 1, header = F, sep="\t")
+  
+  tree_fn <- parent_clades_details[clade_oi, "ref_tree_genome_ids"]
+  tree_dir <- paste0(common_dir,clade_oi,"/",clade_oi,"_trees/")
+  full_tree_fn <- paste0(tree_dir, tree_fn)
+  subclade_GTDB_14k_tree_genome_ids <- read.tree(full_tree_fn)
+  genome_short_names <- sapply(subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) GCF_short_names[x, "V2"])
+  
+  #read presence/absence and maximal bitscores
+  repair_enz_pa_matrix <- read.table(file = paste0(sd_dir,clade_oi,"_repair_enz_pa.tab"), stringsAsFactors = F)
+  repair_enz_bit_matrix <- read.table(file = paste0(sd_dir,clade_oi,"_repair_enz_max_bitscores.tab"), stringsAsFactors = F)
+  
+  #some enzymes have more than 2 copies e.g. upto 10 in clade Maricaulaceae
+  #replace everything more than 2 by 2 for now
+  repair_enz_pa_matrix[repair_enz_pa_matrix>2] <- as.integer(2)
+  
+  ##add genome names as column, so that we can include it as  labels
+  repair_enz_pa_matrix <- add_column(as.data.frame(repair_enz_pa_matrix), genome_short_names, .before = 1)
+  repair_enz_bit_matrix <- add_column(as.data.frame(repair_enz_bit_matrix), genome_short_names, .before = 1)
+  repair_enz_pa_matrix$genome_short_names <- as_factor(x = repair_enz_pa_matrix$genome_short_names)
+  repair_enz_bit_matrix$genome_short_names <- as_factor(x = repair_enz_bit_matrix$genome_short_names)
+  
+  #cluster the enzyme profiles by presence/absence
+  repair_enz_pa_matrix_dist <- dist(x = t(repair_enz_pa_matrix[,2:ncol(repair_enz_pa_matrix)]))
+  repair_enz_pa_matrix_hclust <- hclust(d = repair_enz_pa_matrix_dist, method = "median")
+  
+  #convert wide to long
+  repair_enz_pa_matrix_long <- repair_enz_pa_matrix %>% gather(enz, numHits,colnames(repair_enz_pa_matrix[2:ncol(repair_enz_pa_matrix)]))
+  #reorder enzymes according to clustering order
+  repair_enz_pa_matrix_long1 <- repair_enz_pa_matrix_long %>% mutate(enz=factor(enz,levels = unique(enz)[repair_enz_pa_matrix_hclust$order]))
+  repair_enz_pa_matrix_long1[,"numHits"] <- as.factor(repair_enz_pa_matrix_long1[,"numHits"])
+  
+  ###plot tree and repair enzyme profiles
+  model_nodes <- get_model_nodes(clade_oi)
+  if(identical(model_nodes, character(0))){
+    print("model parameter file not found!")
+    next
+  }
+  related_model_nodes <- model_nodes[[focal_clade_details[focal_clade,"related_model"]]]
+  focal_model_nodes <- model_nodes[[focal_clade_details[focal_clade,"focal_model"]]]
+  
+  cols_genomes <- rep("black", length(genome_short_names))
+  nodeName_tree <- read.tree(paste0(mapnh_sd_dir,clade_oi,"_GTDB_14k_bppml.nodeName"))
+  names(cols_genomes) <- nodeName_tree$tip.label
+  cols_genomes[setdiff(nodeName_tree$tip.label, related_model_nodes)] <- "orange"
+  
+  tree_labeled <- subclade_GTDB_14k_tree_genome_ids
+  tree_labeled$tip.label <- sapply(subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) GCF_short_names[x, "V2"])
+  tree_plot <- ggtree(tr = tree_labeled) + theme(plot.margin = unit(c(3,0,1,0),"cm")) # + geom_tiplab(color=cols_genomes) #
+  
+  pa_plot <- ggplot(repair_enz_pa_matrix_long1, aes(enz,genome_short_names)) + geom_tile(aes(fill=numHits))
+  pa_plot <- pa_plot + scale_fill_brewer(type = "seq", palette = "Blues", labels=c("0", "1", ">1"))
+  pa_plot <- pa_plot + theme(axis.text.x = element_text(angle = 90), legend.title.align = 0.5)
+  pa_plot <- pa_plot + theme(axis.text.y = element_text(colour = cols_genomes))
+  pa_plot <- pa_plot + labs(x="repair enzyme genes", y="", fill="n (hits)")
+  pa_plot <- pa_plot + coord_fixed() + scale_x_discrete(position = "top")
+  pa_plot <- pa_plot + theme(plot.margin = margin(l=0.1,unit="cm"))
+  
+  n_enz <- length(unique(repair_enz_pa_matrix_long1$enz))
+  comb_pa_plot <- plot_grid(tree_plot, pa_plot,ncol = 2, rel_widths = c(1,5), scale = c(1,1), align = "v")
+  save_plot(filename = paste0(res_dir, focal_clade,"_repair_enzymes_PA_clustered.svg"), plot = comb_pa_plot, base_width = 16, base_height = (56/(8.5+n_enz)) + length(subclade_GTDB_14k_tree_genome_ids$tip.label)*(16/(8.5+n_enz)))
+  
+  ###lets try gheatmap
+  # repair_enz_pa_matrix_labeled <- as.data.frame(repair_enz_pa_matrix[,2:ncol(repair_enz_pa_matrix)][,repair_enz_pa_matrix_hclust$order])
+  # rownames(repair_enz_pa_matrix_labeled) <- tree_labeled$tip.label
+  # for(enz_oi in colnames(repair_enz_pa_matrix_labeled)){
+  #   repair_enz_pa_matrix_labeled[enz_oi] <- as.factor(repair_enz_pa_matrix_labeled[,enz_oi])
+  # }
+  # 
+  # comb_pa_plot2 <- gheatmap(p = tree_plot, data = repair_enz_pa_matrix_labeled, width = 8, colnames = T, colnames_position = "top", colnames_angle = 90, hjust = 0.5, offset = 0.1) + scale_fill_brewer(type = "seq", palette = "Blues", labels=c("0", "1", ">1"))
+  # comb_pa_plot3 <- gheatmap(p = comb_pa_plot2, data = repair_enz_pa_matrix_labeled[,1:2], width = 1, colnames = T, colnames_position = "top", colnames_angle = 90, hjust = 0.5, offset = 1) + scale_fill_brewer(type = "seq", palette = "Greys", labels=c("0", "1", ">1"))
+  # 
+  # save_plot(filename = paste0(res_dir, clade_oi,"_repair_enzymes_PA_clustered.svg"), plot = comb_pa_plot3, base_width = 16, base_height = (56/(8.5+n_enz)) + length(subclade_GTDB_14k_tree_genome_ids$tip.label)*(16/(8.5+n_enz)))
+  
+  ###plot bit-scores heatmap
+  repair_enz_bit_matrix_long <- repair_enz_bit_matrix %>% gather(enz, bit_scores,colnames(repair_enz_bit_matrix)[2:ncol(repair_enz_bit_matrix)])
+  repair_enz_bit_matrix_long1 <- repair_enz_bit_matrix_long %>% mutate(enz=factor(enz,levels = unique(enz)[repair_enz_pa_matrix_hclust$order]))
+  bit_plot <- ggplot(repair_enz_bit_matrix_long1, aes(enz,genome_short_names)) + geom_tile(aes(fill=bit_scores))
+  bit_plot <- bit_plot + scale_fill_distiller(palette = "Blues", type = 'seq', na.value = "grey60", direction = 1)#scale_fill_gradient(low = "lightblue", high = "mediumblue")
+  bit_plot <- bit_plot + theme(axis.text.x = element_text(angle = 90), legend.title.align = 0.5)
+  bit_plot <- bit_plot + theme(axis.text.y = element_text(colour = cols_genomes))
+  bit_plot <- bit_plot + labs(x="repair enzyme genes", y="", fill="bit-score")
+  bit_plot <- bit_plot + coord_fixed() + scale_x_discrete(position = "top")
+  bit_plot <- bit_plot + theme(plot.margin = margin(l=0.1,unit="cm"))
+  
+  comb_bitScores_plot <- plot_grid(tree_plot, bit_plot, ncol = 2, rel_widths = c(1,5), scale = c(1,1), align = "v")
+
+  save_plot(filename = paste0(res_dir, focal_clade,"_repair_enzymes_bitScores_clustered.svg"), plot = comb_bitScores_plot, base_width = 16, base_height = (56/(8.5+n_enz)) + length(subclade_GTDB_14k_tree_genome_ids$tip.label)*(16/(8.5+n_enz)))
+
+  ###lets normalize bit scores of each enzyme
+  repair_enz_bit_matrix_norm <- repair_enz_bit_matrix
+  repair_enz_bit_matrix_norm[,2:ncol(repair_enz_bit_matrix_norm)] <- scale(repair_enz_bit_matrix[,2:ncol(repair_enz_bit_matrix_norm)], center = F, scale = sapply(colnames(repair_enz_bit_matrix)[2:ncol(repair_enz_bit_matrix_norm)], function(x) max(repair_enz_bit_matrix[,x], na.rm = T)))
+
+  repair_enz_bit_matrix_norm_long <- repair_enz_bit_matrix_norm %>% gather(enz, bit_scores,colnames(repair_enz_bit_matrix_norm)[2:ncol(repair_enz_bit_matrix_norm)])
+  repair_enz_bit_matrix_norm_long1 <- repair_enz_bit_matrix_norm_long %>% mutate(enz=factor(enz,levels = unique(enz)[repair_enz_pa_matrix_hclust$order]))
+
+  bit_plot <- ggplot(repair_enz_bit_matrix_norm_long1, aes(enz,genome_short_names)) + geom_tile(aes(fill=bit_scores))
+  bit_plot <- bit_plot + scale_fill_distiller(palette = "Blues", type = 'seq', na.value = "grey60", direction = 1)#scale_fill_gradient(low = "lightblue", high = "mediumblue")
+  bit_plot <- bit_plot + theme(axis.text.x = element_text(angle = 90), legend.title.align = 0.5)
+  bit_plot <- bit_plot + theme(axis.text.y = element_text(colour = cols_genomes))
+  bit_plot <- bit_plot + labs(x="repair enzyme genes", y="", fill="bit-score")
+  bit_plot <- bit_plot + coord_fixed() + scale_x_discrete(position = "top")
+  bit_plot <- bit_plot + theme(plot.margin = margin(l=0.1,unit="cm"))
+  
+  comb_nbitScores_plot <- plot_grid(tree_plot, bit_plot, ncol = 2, rel_widths = c(1,5), scale = c(1,1), align = "v")
+
+  save_plot(filename = paste0(res_dir, focal_clade,"_repair_enzymes_normBitScores_clustered.svg"), plot = comb_nbitScores_plot, base_width = 16, base_height = (56/(8.5+n_enz)) + length(subclade_GTDB_14k_tree_genome_ids$tip.label)*(16/(8.5+n_enz)))
+}
+```
+
+
+
+As related, let us find how often are these enzymes gained/lost in randomly selected sister clades in the same phylogenies. Essentially, I can select a random internal node, and ask if an enzyme is gained/lost in one of the descendant branches. I can actually repeat this for all internal nodes in a phylogeny, except the root. It is impossible to polarize presence-absence across the two clades branching from the root into gain-loss on one of them.
+```{r gain_loss_relateds }
+for(parent_oi in rownames(parent_clades_details)){
+  sd_dir <- paste0(common_dir,parent_oi,"/")
+  mapnh_sd_dir <- paste0(mapnh_dir,parent_oi,"/")
+  
+  tree_fn <- parent_clades_details[parent_oi, "ref_tree_genome_ids"]
+  tree_dir <- paste0(common_dir,parent_oi,"/",parent_oi,"_trees/")
+  full_tree_fn <- paste0(tree_dir, tree_fn)
+  subclade_GTDB_14k_tree_genome_ids <- read.tree(full_tree_fn)
+  
+  nodeName_tree <- read.tree(paste0(mapnh_sd_dir,parent_oi,"_GTDB_14k_bppml.nodeName"))
+  
+  genomes_oi <- subclade_GTDB_14k_tree_genome_ids$tip.label
+  names(genomes_oi) <- nodeName_tree$tip.label
+  
+  repair_enz_pa_matrix <- read.table(file = paste0(sd_dir,parent_oi,"_repair_enz_pa.tab"), stringsAsFactors = F)
+  repair_enz_bit_matrix <- read.table(file = paste0(sd_dir,parent_oi,"_repair_enz_max_bitscores.tab"), stringsAsFactors = F)
+  
+  related_model_nodes <- get_model_nodes(parent_oi)[[focal_clade_details[focal_clade,"related_model"]]]
+  focal_model_nodes <- get_model_nodes(parent_oi)[[focal_clade_details[focal_clade,"focal_model"]]]
+  
+  focal_model_genomes <- genomes_oi[focal_model_nodes]
+  focal_model_genomes <- focal_model_genomes[!is.na(focal_model_genomes)]
+  related_model_genomes <- genomes_oi[related_model_nodes]
+  related_model_genomes <- related_model_genomes[!is.na(related_model_genomes)]
+  
+  
+}
+```
+
+```{r get_num_of_jumps_analayzed }
+n_down <- n_up <- 0
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  
+  for(jumpNum_oi in which(jumpClade_details5$repairEnz_av)){#only for those jumps where enzyme data was available
+    if(is.na(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"])){
+      print("GC content not available!")
+      next
+    }
+    
+    if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]<0) n_down <- n_down+1
+    if(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]>0) n_up <- n_up+1
+  }
+}
+```
+
+Identify datasets with changes in Ku
+```{r identify_datasets with Ku }
+all_feature_changes <- read.table(file = paste0(jump_common_dir, "all_features_changes_table.tab"), stringsAsFactors = F)
+
+###identify clades with increased or decreased GC-
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  
+  for(jumpNum_oi in which(jumpClade_details5$repairEnz_av)){#only for those jumps where enzyme data was available
+    if(is.na(all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"])){
+      # print("GC content not available!")
+      next
+    }
+    
+    jumpDir <- paste0(jump_common_dir, OLclade_oi, "_jump", jumpNum_oi, "/")
+    enz_pa_status <- read.table(file = paste0(jumpDir,"enz_PA_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    enz_bit_status <- read.table(file = paste0(jumpDir,"enz_bitscore_status.tab"), stringsAsFactors = F, header = T, row.names = 1)
+    
+    ##based on bit scores
+    for(enz_oi in c("ku")){
+      if(enz_oi %in% rownames(enz_bit_status)){
+        if(enz_bit_status[enz_oi,"event"]==1 | enz_bit_status[enz_oi,"event"]==-1){#gain event
+          print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+          print(paste0("The GC jump magnitude was:    ", all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]))
+          print(paste0("Ku was gained or lost here:    ", enz_bit_status[enz_oi,"event"]))
+        }
+      }
+    }
+    
+    ##based on number of direct hits
+    for(enz_oi in c("ku")){
+      ##the following assumes if 2 hits are found (status_focal and/or status_related > 1), one of them is the real ortholog and relateds are (functionally different) remote homologs
+      ##**this may not be true**
+      # print(enz_oi)
+      if(is.na(enz_pa_status[enz_oi,"status_focal"]) || is.na(enz_pa_status[enz_oi,"status_related"])){
+        # print("enzyme status could not be ascertained")
+        next
+      }
+      
+      if(enz_pa_status[enz_oi,"event"]==1 | enz_pa_status[enz_oi,"event"]==-1){
+        print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+        print(paste0("The GC jump magnitude was:    ", all_feature_changes[paste0(OLclade_oi,"_jump",jumpNum_oi),"GC"]))
+        print(paste0("Ku was gained or lost here:    ", enz_pa_status[enz_oi,"event"]))
+      }
+    }
+  }
+}
+```

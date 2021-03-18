@@ -1,0 +1,36 @@
+---
+title: "levolution_output_analysis"
+output: html_notebook
+---
+
+### Background
+Here, I will summarize the best-fit parameter values obtained from levolution after fitting the Levy jumps model to GC content data of various order-level clades.
+
+### Summary of best fit parameters
+Let me summarize the best fit parameters for all clades-
+```{r summary_levolution_jump_model_fits }
+main_dir <- "/media/saurabh/Data/Deepas_lab/Work/GC_macro/Results/macrodynamics/GTDB_levolution/"
+
+clades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale", "Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo",3))
+config_oi <- "1"
+alphas_oi <- c(0.1, 0.25, 0.5, 1, 2)
+
+levolution_best_fit_parameters <- as.data.frame(matrix(data = NA, nrow = length(clades_oi), ncol = 9, dimnames = list(clades_oi, c("LRT_p", "LRT_model", "root_state", "sig2", "alpha", "lambda", "total_bLength", "exp_jumpNum", "alpha*lambda"))))
+
+for(clade_n in 1:length(clades_oi)[1:1]){
+  clade_oi <- clades_oi[clade_n]
+  p_folder <- p_folders[clade_n]
+  LL_alphas <- c()
+  for(alpha_oi in alphas_oi){
+    summary_file <- read.table(file = paste0(main_dir, p_folder,"_GTDB_14k_levolution/", clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha",alpha_oi,"_oneLineSummary.txt"), header = T, stringsAsFactors = F)
+    LL_alphas <- c(LL_alphas, summary_file$LL)
+  }
+  alpha_maxLL <- alphas_oi[which(LL_alphas==max(LL_alphas))]
+  
+  summary_file <- read.table(file = paste0(main_dir, p_folder,"_GTDB_14k_levolution/", clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha",alpha_maxLL,"_oneLineSummary.txt"), header = T, stringsAsFactors = F)
+  levolution_best_fit_parameters[clade_oi,] <- c(summary_file[,c("preferredModelLRT", "LRT_pValue", "root_state", "brown_variance", "alpha", "lambda", "treeLength")], summary_file$lambda*summary_file$treeLength, summary_file$lambda*summary_file$alpha)
+}
+
+write.table(x = format(x = levolution_best_fit_parameters, digits=4), file = paste0(main_dir, "levolution_best_fit_parameters_summary.txt"), quote = F, row.names = T, col.names = T)
+```

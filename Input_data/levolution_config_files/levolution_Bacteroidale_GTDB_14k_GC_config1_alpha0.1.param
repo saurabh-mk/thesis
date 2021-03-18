@@ -1,0 +1,14 @@
+task infer
+inferJumps
+
+tree GTDB_levolution/Results/Bacteroidale_GTDB_14k_tree.newick
+traits GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC.txt
+
+numNVecs 5000
+burnin 100
+thinning 2
+
+alpha 0.1
+lambda 1
+
+outName GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC_config1_alpha0.1

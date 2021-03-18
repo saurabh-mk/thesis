@@ -1,0 +1,21 @@
+alphabet=Codon(letter=DNA)
+genetic_code=Standard
+
+### Alignment
+input.sequence.file = $(SEQ)
+input.sequence.sites_to_use = all
+
+### Initial tree
+input.tree.file= $(IN_TREE)
+
+### Description of the modeling 
+nonhomogeneous = general
+rate_distribution = Gamma(n=5, alpha=1)
+
+nonhomogeneous.root_freq=F3X4(init=observed)
+
+### tree output file
+output.tree.file = $(OUT_TREE)
+
+### model ouput file
+output.estimates= $(P_OUTPUT)

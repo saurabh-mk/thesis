@@ -1,0 +1,91 @@
+******************************************************************
+*            Bio++ Sequence Generator, version 2.3.1             *
+*                                                                *
+* Authors: J. Dutheil                                            *
+*          B. Boussau                       Last Modif. 06/06/17 *
+*          L. Gueguen                                            *
+*          M. Groussin                                           *
+******************************************************************
+
+Parsing options:
+Parsing file /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eOmegaSmaller_eGCEq.bpp for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+WARNING!!! Parameter input.tree.method not specified. Default used instead: single
+Input tree file .......................: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simul_intree_eBranchesLonger.newick
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+WARNING!!! Parameter output.tree_ids.file not specified. Default used instead: none
+WARNING!!! Parameter input.tree.scale not specified. Default used instead: 1
+Heterogeneous model....................: general
+Number of distinct models..............: 2
+StopCodon frequencies distribution ....: quadratic
+StopCodon frequencies distribution ....: quadratic
+Parameter found........................: 1_Full.theta=0.61
+Parameter found........................: 1_Full.theta1=0.61
+Parameter found........................: 1_Full.theta2=0.59
+Parameter found........................: 2_Full.theta=0.39
+Parameter found........................: 2_Full.theta1=0.48
+Parameter found........................: 2_Full.theta2=0.45
+Parameter found........................: 3_Full.theta=0.69
+Parameter found........................: 3_Full.theta1=0.4
+Parameter found........................: 3_Full.theta2=0.5
+Root frequencies ......................: F3X4
+Stationarity assumed...................: no
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_1=2.01
+Parameter found........................: YN98.omega_1=0.039
+Parameter found........................: YN98.1_Full.theta_1=0.5
+Parameter found........................: YN98.1_Full.theta1_1=0.62
+Parameter found........................: YN98.1_Full.theta2_1=0.59
+Parameter found........................: YN98.2_Full.theta_1=0.44
+Parameter found........................: YN98.2_Full.theta1_1=0.55
+Parameter found........................: YN98.2_Full.theta2_1=0.39
+Parameter found........................: YN98.3_Full.theta_1=0.58
+Parameter found........................: YN98.3_Full.theta1_1=0.37
+Parameter found........................: YN98.3_Full.theta2_1=0.45
+Model1 is associated to................: 9 node(s).
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_2=2.01
+Parameter found........................: YN98.omega_2=0.0039
+Parameter found........................: YN98.1_Full.theta_2=0.5
+Parameter found........................: YN98.1_Full.theta1_2=0.62
+Parameter found........................: YN98.1_Full.theta2_2=0.59
+Parameter found........................: YN98.2_Full.theta_2=0.44
+Parameter found........................: YN98.2_Full.theta1_2=0.55
+Parameter found........................: YN98.2_Full.theta2_2=0.39
+Parameter found........................: YN98.3_Full.theta_2=0.58
+Parameter found........................: YN98.3_Full.theta1_2=0.37
+Parameter found........................: YN98.3_Full.theta2_2=0.45
+Model2 is associated to................: 3 node(s).
+WARNING!!! Parameter input.infos not specified. Default used instead: none
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=0.99
+- Category 0 (Pr = 0.2) rate...........: 0.105637
+- Category 1 (Pr = 0.2) rate...........: 0.357082
+- Category 2 (Pr = 0.2) rate...........: 0.697185
+- Category 3 (Pr = 0.2) rate...........: 1.22244
+- Category 4 (Pr = 0.2) rate...........: 2.61765
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=0.99
+- Category 0 (Pr = 0.2) rate...........: 0.105637
+- Category 1 (Pr = 0.2) rate...........: 0.357082
+- Category 2 (Pr = 0.2) rate...........: 0.697185
+- Category 3 (Pr = 0.2) rate...........: 1.22244
+- Category 4 (Pr = 0.2) rate...........: 2.61765
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Number of sites........................: 2000
+Perform simulations....................: Done.
+Output alignment file .................: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesLonger_eOmegaSmaller_eGCEq.fa
+Output alignment format ...............: FASTA file
+BppSeqGen's done. Bye.
+Total execution time: 0.000000d, 0.000000h, 0.000000m, 0.000000s.

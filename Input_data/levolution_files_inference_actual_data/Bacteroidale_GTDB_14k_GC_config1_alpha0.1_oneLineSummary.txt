@@ -1,0 +1,2 @@
+tree	traits	LL	root_state	brown_variance	alpha	lambda	null_LL	null_root_state	null_brown_rate	treeLength	LRT_statistics	LRT_pValue	preferredModelLRT	AIC_difference	preferredModelAIC
+/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_tree.newick	/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC.txt	-1848.7	40.029	76.0461	0.1	4.23788	-1886.49	39.9745	108.407	74.2943	75.5732	1e-16	lévy	71.5732	lévy

@@ -1,0 +1,14 @@
+******************************************************************
+*       Bio++ Maximum Likelihood Computation, version 2.4.0      *
+*                                                                *
+* Authors: J. Dutheil                       Last Modif. 19/02/18 *
+*          B. Boussau                                            *
+*          L. Guéguen                                            *
+*          M. Groussin                                           *
+******************************************************************
+
+Parsing options:
+Parsing file /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/ml_nonhom_Buchnera7a_simul.bpp for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+File does not exists: /media/saurabh/Data/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations_new/Buchnera7a_seq_simul_eBranchesEq_eOmegaHigher_eGCEq_siteHet_pv.fa

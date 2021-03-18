@@ -1,0 +1,197 @@
+---
+title: "Detect repair enzyme genes in selected datasets"
+output: html_notebook
+---
+
+
+```{r common_processing }
+library(phytools)
+library(rncl)
+library(seqinr)
+library(parallel)
+library(tidyverse)
+library(cowplot)
+
+main_dir <- "/home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/organized_detailed/"
+common_dir <- paste0(main_dir, "Input_data/phylogenies/")
+gd_base <- paste0(main_dir, "Input_data/GTDB_data/GTDB_")
+mapnh_dir <- paste0(main_dir, "Results/mapNH/")
+dNdS_dir <- paste0(main_dir, "Results/dNdS/")
+enz_input_dir <- paste0(main_dir, "Input_data/repair_enzymes/")
+res_dir <- paste0(main_dir, "Results/repair_enzymes/")
+jump_common_dir <- "/home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/organized_detailed/Results/jump_analysis/"
+
+GTDB_14k_metadata <- read.delim(file = paste0(main_dir, "Input_data/phylogenies/GTDB_bac_metadata_r80_pruned0.01.tsv"), header = T, row.names = 1, stringsAsFactors = F)
+
+enz_list_fn <- "repair_enzyme_list.txt"
+repair_enz_list <- read.csv(file = paste0(enz_input_dir,enz_list_fn), stringsAsFactors = F, header = F)
+
+OLclades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale","Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo", 3))
+pp_cutoffs <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75, 0.9,0.9,0.9)
+alphas_oi <- c(1,1,1,0.5,0.25,0.25,1,0.25,0.5,0.5)
+config_oi <- 1
+
+get_genera_sp_names <- function(full_GTDB_taxonomy){
+  GTDB_fields <- strsplit(x = full_GTDB_taxonomy, split = ";g__")[[1]]
+  return(paste0("g__", GTDB_fields[2]))
+}
+```
+
+Lets first get a list of genomes in which hits are found at all for each repair enzyme.
+Lets create a function which extracts annotated, tabulated results from a hmm output file.
+```{r parse_hmm_function}
+parse_hmm_tab <- function(fn_oi){
+  outLines <- readLines(con = fn_oi)
+  return_vector_hmm_row <- function(row_oi){
+    split_by_sp <- strsplit(x = row_oi, split = "\\s+")[[1]]
+    vec_oi <- c(split_by_sp[1:18], paste0(split_by_sp[19:length(split_by_sp)], collapse = " "))
+    return(vec_oi)
+  }
+  hmmsearch_tab <- t(sapply(X = outLines[-c(1:3,(length(outLines)-9):length(outLines))], FUN = function(x) return_vector_hmm_row(x), USE.NAMES = F))
+  hmmsearch_tab <- as.data.frame(hmmsearch_tab)
+  colnames(hmmsearch_tab) <- c("tname", "tacc", "qname", "qacc", "seval", "sbit", "sbias", "deval", "dbit", "dbias", "exp", "reg", "clu", "ov", "env", "dom", "rep", "inc", "description")
+  hmmsearch_tab$sbit <- as.numeric(levels(hmmsearch_tab$sbit))[hmmsearch_tab$sbit]
+  hmmsearch_tab$tname <- as.character(hmmsearch_tab$tname)
+  return(hmmsearch_tab)
+}
+```
+
+```{r get_gneome_ids }
+GTDB_prot_dir <- paste0(gd_base, "proteins/")
+for(enz_oi in repair_enz_list$V1){
+  print(enz_oi)
+  hmmsearch_out_fn <- paste0(enz_input_dir,"/uniprot-",enz_oi,".hmmsearch3.tab")
+  hmmsearch_tab <- parse_hmm_tab(hmmsearch_out_fn)
+  acc_fn <- paste0(enz_input_dir,enz_oi,"_acc_found.tab")
+  write.table(x = hmmsearch_tab[,1], file = acc_fn, quote = F, row.names = F, col.names = F)
+}
+```
+
+```{r cvb }
+library(parallel)
+no_cores <- 3 ##choose the appropriate number of cores
+cl_oi <- makeCluster(no_cores, type = "FORK")
+
+parLapply(cl = cl_oi, X = repair_enz_list$V1, function(x) system2(command = "grep", args = c("-Fo", "-f", paste0(enz_input_dir,x,"_acc_found.tab"), "-r", GTDB_prot_dir, ">", paste0(enz_input_dir, x, "_found_proteomes.tab")), env = c("LC_ALL=C")))
+
+# for(enz_oi in repair_enz_list$V1){
+#   hmmsearch_out_fn <- paste0(enz_input_dir,"/uniprot-",enz_oi,".hmmsearch.tab")
+#   hmmsearch_tab <- parse_hmm_tab(hmmsearch_out_fn)
+#   acc_fn <- paste0(enz_input_dir,enz_oi,"_acc_found.tab")
+# 
+#   genome_acc_tab_fn <- paste0(enz_input_dir, enz_oi, "_found_proteomes.tab")
+#   system2(command = "grep", args = c("-Fo", "-f", acc_fn, "-r", GTDB_prot_dir, ">", genome_acc_tab_fn), env = c("LC_ALL=C"))
+# }
+```
+
+For each clade, lets analyze repair enzyme homologs detected by hmmsearch. I will first separate presence-absence and the bitsores of obtained hits.
+```{r extract_repair_enzyme_pattern }
+for(OLclade_n in 1:length(OLclades_oi)){
+  OLclade_oi <- OLclades_oi[OLclade_n]
+  print(paste0("Analysing repair enzymes within ", OLclade_oi))
+  
+  jumpClade_details4 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries4.tab"), stringsAsFactors = F)
+  jumpClade_details5 <- read.table(file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), stringsAsFactors = F)
+  jumpClade_details5$repairEnz_analysis <- NA
+  
+  for(jumpNum_oi in which(jumpClade_details4$genomes_downloaded==T | jumpClade_details5$genomes_downloaded==T)){#only for those jumps which are analyzable
+    print(paste0("Extracting repair enzyme information for jump number ", jumpNum_oi))
+    # focal_clade_tree < read.tree(file = paste0(jumpDir, OLclade_oi, "_jump", jumpNum_oi, ".newick"))
+    
+    jumpDir <- paste0(jump_common_dir, OLclade_oi, "_jump", jumpNum_oi, "/")
+    if(jumpClade_details4[paste0("jump",jumpNum_oi), "genomes_downloaded"]){
+      all_accNums <- read.table(paste0(jumpDir, "ass_fn_GCFids_found.txt"), stringsAsFactors = F)
+      GTDB_accNums_map <- all_accNums$V1
+      GTDB_labels <- read.table(paste0(jumpDir, "required_GCFonly_ids.txt"), stringsAsFactors = F)
+      names(GTDB_accNums_map) <- GTDB_labels$V1
+    }else{
+      focal_clade_tree_pruned <- read.tree(file = paste0(jumpDir, "pruned_tree.newick"))
+      GTDB_labels <- focal_clade_tree_pruned$tip.label
+      all_accNums <- read.table(paste0(jumpDir, "ass_fn_GCFids_found.txt"), stringsAsFactors = F)
+      GTDB_accNums_map <- all_accNums$V1[(1+length(all_accNums$V1) - length(focal_clade_tree_pruned$tip.label)):length(all_accNums$V1)]
+      names(GTDB_accNums_map) <- GTDB_labels
+    }
+    
+    nested_focalTip_labels <- tryCatch({
+      read.table(file = paste0(jumpDir, "nestedFocalTips.tab"), stringsAsFactors = F)$V1
+    }, error=function(e){
+      print(e)
+      return(NA)
+    })
+    
+    all_protAccNums <- read.table(file = paste0(jumpDir,"prot_fn_GCFids_found.txt"),stringsAsFactors = F, header = F)
+    all_protAccNums <- unique(all_protAccNums$V1)
+    
+    focal_GTDBLabels <- read.table(paste0(jumpDir, OLclade_oi,"_jump",jumpNum_oi,"_focalGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    focal_GTDBLabels_valid <- setdiff(focal_GTDBLabels$V1, nested_focalTip_labels)
+    
+    focal_accNums <- sapply(focal_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    sis_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_sisGTDBLabels.tab"), stringsAsFactors = F, header = F)
+    sis_GTDBLabels_valid <- setdiff(sis_GTDBLabels$V1, nested_focalTip_labels)
+    sis_accNums <- sapply(sis_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    
+    if(length(sis_accNums)==0){
+      print("No valid sister clade genome available.")
+      jumpClade_details5[paste0("jump",jumpNum_oi), "repairEnz_analysis"] <- F
+      next
+    }
+    
+    out1_accNums <- NA
+    if(jumpClade_details5[paste0("jump",jumpNum_oi), "depth"] %in% c("outgroup1", "outgroup2")){
+      out1_GTDBLabels <- read.table(paste0(jumpDir,OLclade_oi,"_jump",jumpNum_oi,"_out1GTDBLabels.tab"), stringsAsFactors = F, header = F)
+      out1_GTDBLabels_valid <- setdiff(out1_GTDBLabels$V1, nested_focalTip_labels)
+      out1_accNums <- sapply(out1_GTDBLabels_valid, function(x) GTDB_accNums_map[x], simplify = T, USE.NAMES = F)
+    }
+    
+    complete_focal_accNums <- focal_accNums[which(sapply(names(focal_accNums), function(x) GTDB_14k_metadata[x, "checkm_completeness"]>95))]
+    complete_sis_accNums <- sis_accNums[which(sapply(names(sis_accNums), function(x) GTDB_14k_metadata[x, "checkm_completeness"]>95))]
+
+    if(length(out1_accNums)>0){
+      if(!all(is.na(out1_accNums))){
+        complete_out1_accNums <- out1_accNums[which(sapply(names(out1_accNums), function(x) GTDB_14k_metadata[x, "checkm_completeness"]>95))]
+      }else{
+        complete_out1_accNums <- NA
+      }
+    }else{
+      complete_out1_accNums <- NA
+    }
+    
+    complete_other_accNums <- c(complete_sis_accNums, complete_out1_accNums)
+    
+    if(length(setdiff(intersect(complete_focal_accNums, all_protAccNums), NA)) < 1 || length(setdiff(intersect(complete_other_accNums, all_protAccNums), NA)) < 1 ){
+      print("Cannot detect repair enzymes. Not enough genomes available.")
+      jumpClade_details5[paste0("jump",jumpNum_oi), "repairEnz_analysis"] <- F
+      next
+    }
+    jumpClade_details5[paste0("jump",jumpNum_oi), "repairEnz_analysis"] <- T
+    
+    valid_protAccNums <- setdiff(intersect(c(complete_focal_accNums, complete_sis_accNums,complete_out1_accNums), all_protAccNums), NA)
+    
+    repair_enz_pa_matrix <- repair_enz_bit_matrix <- repair_enz_loge_matrix <- matrix(data = NA, nrow = length(valid_protAccNums), ncol = length(repair_enz_list$V1), dimnames = list(valid_protAccNums,repair_enz_list$V1))
+
+    #extract presence/absence and bit-scores from hmm output
+    for(enz_oi in repair_enz_list$V1){
+      hmmsearch_out_fn <- paste0(enz_input_dir,"uniprot-",enz_oi,".hmmsearch3.tab")
+      hmmsearch_tab <- parse_hmm_tab(hmmsearch_out_fn)
+
+      genome_acc_tab_fn <- paste0(enz_input_dir, enz_oi, "_found_proteomes.tab")
+      genome_acc_tab_out <- readLines(con = genome_acc_tab_fn)
+      genome_acc_tab_out <- genome_acc_tab_out[!grepl(pattern = ".gz", genome_acc_tab_out)]
+      
+      # acc_genome_tab <- sapply(genome_acc_tab_out, function(x) strsplit(x = x, split = ":")[[1]], USE.NAMES = F)
+      acc_genome_tab <- matrix(unlist(strsplit(x = genome_acc_tab_out, split = ":")), ncol = 2, byrow = T)
+
+      req_prot_ids <- lapply(valid_protAccNums, function(x) acc_genome_tab[grepl(pattern = x, x = acc_genome_tab[,1]),2])
+      repair_enz_pa_matrix[,enz_oi] <- sapply(1:length(valid_protAccNums), function(x) length(req_prot_ids[x][[1]]))
+      repair_enz_bit_matrix[,enz_oi] <- sapply(1:length(valid_protAccNums), function(x) suppressWarnings(max(hmmsearch_tab[which(hmmsearch_tab[,"tname"] %in% req_prot_ids[x][[1]]),"sbit"])))
+      }
+    
+      write.table(repair_enz_pa_matrix, file = paste0(jumpDir, "repair_enz_pa.tab"), quote = F)
+      write.table(repair_enz_bit_matrix, file = paste0(jumpDir,"repair_enz_max_bitscores.tab"), quote = F)
+  }
+  write.table(jumpClade_details5, file = paste0(jump_common_dir, OLclade_oi, "_jumpSummaries5.tab"), quote = F)
+}
+```
+Next, I will analyze and plot this data in a separate notebook.

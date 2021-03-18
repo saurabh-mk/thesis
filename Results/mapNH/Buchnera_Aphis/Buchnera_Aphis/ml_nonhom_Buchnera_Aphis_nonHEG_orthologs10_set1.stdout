@@ -1,0 +1,126 @@
+******************************************************************
+*       Bio++ Maximum Likelihood Computation, version 2.3.1      *
+*                                                                *
+* Authors: J. Dutheil                       Last Modif. 06/06/17 *
+*          B. Boussau                                            *
+*          L. Guéguen                                            *
+*          M. Groussin                                           *
+******************************************************************
+
+Parsing options:
+Parsing file /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/ml_nonhom_Buchnera_Aphis_nonHEG_orthologs10_set1.bpp for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis_nonHEG_orthologs10_set1.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: yes
+Number of sequences....................: 7
+Number of sites........................: 3055
+Input tree.............................: user
+Input tree file .......................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis_tree.newick
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+Output tree file ......................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/tree_nonhom_ml_Buchnera_Aphis_nonHEG_orthologs10_set1.dnd
+Output tree format ....................: Newick
+Branch lengths.........................: Input
+Heterogeneous model....................: general
+Number of distinct models..............: 2
+StopCodon frequencies distribution ....: quadratic
+StopCodon frequencies distribution ....: quadratic
+Root frequencies ......................: F3X4
+Stationarity assumed...................: no
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: observed
+WARNING!!! Parameter YN98.initFreqs.observedPseudoCount not specified. Default used instead: 0
+WARNING!!! Parameter YN98.kappa not specified. Default used instead: 1
+Parameter found........................: YN98.kappa_1=1
+WARNING!!! Parameter YN98.omega not specified. Default used instead: 1
+Parameter found........................: YN98.omega_1=1
+Model1 is associated to................: 10 node(s).
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: observed
+WARNING!!! Parameter YN98.initFreqs.observedPseudoCount not specified. Default used instead: 0
+WARNING!!! Parameter YN98.kappa not specified. Default used instead: 1
+Parameter found........................: YN98.kappa_2=1
+WARNING!!! Parameter YN98.omega not specified. Default used instead: 1
+Parameter found........................: YN98.omega_2=1
+Model2 is associated to................: 1 node(s).
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=1
+- Category 0 (Pr = 0.2) rate...........: 0.107426
+- Category 1 (Pr = 0.2) rate...........: 0.360097
+- Category 2 (Pr = 0.2) rate...........: 0.699895
+- Category 3 (Pr = 0.2) rate...........: 1.22314
+- Category 4 (Pr = 0.2) rate...........: 2.60944
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Likelihood recursion...................: simple
+Initializing data structure............: Done.
+Number of distinct sites...............: 2005
+Initial log likelihood.................: -42120.1302210452
+Message handler........................: none
+Profiler...............................: none
+Max # ML evaluations...................: 1000000
+Tolerance..............................: 1e-06
+Optimize topology......................: no
+Optimization method....................: FullD
+Algorithm used for derivable parameters: Newton
+Reparametrization......................: no
+Molecular clock........................: None
+Optimizing... / 1Optimizing... - 2Optimizing... \ 3Optimizing... - 4Optimizing... / 5Optimizing... - 6Optimizing... \ 7Optimizing... - 8Optimizing... / 9Optimizing... - 10Optimizing... \ 11Optimizing... - 12Optimizing... / 13Optimizing... - 14Optimizing... \ 15Optimizing... - 16Optimizing... / 17Optimizing... - 18Optimizing... \ 19Optimizing... - 20Optimizing... / 21Optimizing... - 22Optimizing... \ 23Optimizing... - 24Optimizing... / 25Optimizing... - 26Optimizing... \ 27Optimizing... - 28Optimizing... / 29Optimizing... - 30Optimizing... \ 31Optimizing... - 32Optimizing... / 33Optimizing... - 34Optimizing... \ 35Optimizing... - 36Optimizing... / 37Optimizing... - 38Optimizing... \ 39Optimizing... - 40Optimizing... / 41Optimizing... - 42Optimizing... \ 43Optimizing... - 44Optimizing... / 45Optimizing... - 46Optimizing... \ 47Optimizing... - 48Optimizing... / 49Optimizing... - 50Optimizing... \ 51Optimizing... - 52Optimizing... / 53Optimizing... - 54Optimizing... \ 55Optimizing... - 56Optimizing... / 57Optimizing... - 58Optimizing... \ 59Optimizing... - 60Optimizing... / 61Optimizing... - 62Optimizing... \ 63Optimizing... - 64Optimizing... / 65Optimizing... - 66Optimizing... \ 67Optimizing... - 68Optimizing... / 69Optimizing... - 70Optimizing... \ 71Optimizing... - 72Optimizing... / 73Optimizing... - 74Optimizing... \ 75Optimizing... - 76Optimizing... / 77Optimizing... - 78Optimizing... \ 79Optimizing... - 80Optimizing... / 81Optimizing... - 82Optimizing... \ 83Optimizing... - 84Optimizing... / 85Optimizing... - 86Optimizing... \ 87Optimizing... - 88Optimizing... / 89Optimizing... - 90Optimizing... \ 91Optimizing... - 92Optimizing... / 93Optimizing... - 94Optimizing... \ 95Optimizing... - 96Optimizing... / 97Optimizing... - 98Optimizing... \ 99Optimizing... - 100Optimizing... / 101Optimizing... - 102Optimizing... \ 103Optimizing... - 104Optimizing... / 105Optimizing... - 106Optimizing... \ 107Optimizing... - 108Optimizing... / 109Optimizing... - 110Optimizing... \ 111Optimizing... - 112Optimizing... / 113Optimizing... - 114Optimizing... \ 115Optimizing... - 116Optimizing... / 117Optimizing... - 118Optimizing... \ 119Optimizing... - 120Optimizing... / 121Optimizing... - 122Optimizing... \ 123Optimizing... - 124Optimizing... / 125Optimizing... - 126Optimizing... \ 127Optimizing... - 128Optimizing... / 129Optimizing... - 130Optimizing... \ 131Optimizing... - 132Optimizing... / 133Optimizing... - 134Optimizing... \ 135Optimizing... - 136Optimizing... / 137Optimizing... - 138Optimizing... \ 139Optimizing... - 140Optimizing... / 141Optimizing... - 142Optimizing... \ 143
+
+Performed..............................: 144 function evaluations.
+Output tree file ......................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/tree_nonhom_ml_Buchnera_Aphis_nonHEG_orthologs10_set1.dnd
+Output tree format ....................: Newick
+Log likelihood.........................: -34786.0458039358
+root.1_Full.theta......................: 0.359218
+root.1_Full.theta1.....................: 0.576962
+root.1_Full.theta2.....................: 0.671604
+root.2_Full.theta......................: 0.305959
+root.2_Full.theta1.....................: 0.561772
+root.2_Full.theta2.....................: 0.433214
+root.3_Full.theta......................: 0.082493
+root.3_Full.theta1.....................: 0.500674
+root.3_Full.theta2.....................: 0.956382
+YN98.kappa_1...........................: 2.87518
+YN98.omega_1...........................: 0.0458634
+YN98.1_Full.theta_1....................: 0.372844
+YN98.1_Full.theta1_1...................: 0.517298
+YN98.1_Full.theta2_1...................: 0.608701
+YN98.2_Full.theta_1....................: 0.318519
+YN98.2_Full.theta1_1...................: 0.61888
+YN98.2_Full.theta2_1...................: 0.439109
+YN98.3_Full.theta_1....................: 0.161603
+YN98.3_Full.theta1_1...................: 0.489489
+YN98.3_Full.theta2_1...................: 0.465434
+YN98.kappa_2...........................: 4.31358
+YN98.omega_2...........................: 0.0512124
+YN98.1_Full.theta_2....................: 0.347021
+YN98.1_Full.theta1_2...................: 0.492046
+YN98.1_Full.theta2_2...................: 0.651072
+YN98.2_Full.theta_2....................: 0.314075
+YN98.2_Full.theta1_2...................: 0.554214
+YN98.2_Full.theta2_2...................: 0.483255
+YN98.3_Full.theta_2....................: 0.160417
+YN98.3_Full.theta1_2...................: 0.485249
+YN98.3_Full.theta2_2...................: 0.51697
+Gamma.alpha............................: 0.90146
+WARNING!!! Parameter output.estimates.alias not specified. Default used instead: 1
+Output estimates to file...............: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Aphis/Buchnera_Aphis/model_nonhom_ml_Buchnera_Aphis_nonHEG_orthologs10_set1.params
+
+Posterior rate distribution for dataset:
+
+Pr(0.089647) = 0.253355
+Pr(0.328777) = 0.222586
+Pr(0.670952) = 0.171195
+Pr(1.214791) = 0.163666
+Pr(2.695832) = 0.189198
+
+
+WARNING!!! Parameter output.infos not specified. Default used instead: none
+BppML's done. Bye.
+Total execution time: 0.000000d, 3.000000h, 23.000000m, 55.000000s.

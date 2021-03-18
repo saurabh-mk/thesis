@@ -1,0 +1,28 @@
+******************************************************************
+*       Bio++ Maximum Likelihood Computation, version 2.3.1      *
+*                                                                *
+* Authors: J. Dutheil                       Last Modif. 06/06/17 *
+*          B. Boussau                                            *
+*          L. Guéguen                                            *
+*          M. Groussin                                           *
+******************************************************************
+
+Parsing options:
+Parsing file Buchnera/ml_nonhom_M8_F61_Buchnera_nonHEG_orthologs40_set1.bpp for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: Buchnera_nonHEG_orthologs40_set1.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: yes
+Number of sequences....................: 7
+Number of sites........................: 12258
+Input tree.............................: user
+Input tree file .......................: Buchnera_genome_tree.newick
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+Output tree file ......................: Buchnera/tree_nonhom_ml_M8_F61_Buchnera_nonHEG_orthologs40_set1.dnd
+Output tree format ....................: Newick
+Branch lengths.........................: Input
+Heterogeneous model....................: general
+Number of distinct models..............: 2

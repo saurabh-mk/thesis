@@ -1,0 +1,108 @@
+---
+title: "levolution jump magnitudes and direction"
+output: html_notebook
+---
+
+### Background
+Here, I will perform various analyses starting from the output of Levy jump models obtained from levolution.
+
+```{r levolution_output_analysis }
+library(phytools)
+library(rncl)
+
+data_dir <- "../Input_data/levolution_files_inference_actual_data/"
+
+levolution_best_fit_parameters <- read.table(file = paste0(data_dir, "levolution_best_fit_parameters_summary.txt"), row.names = 1, header = T, stringsAsFactors = F)
+```
+
+### Summary of jump directions and magnitudes
+Since levolution is unable to return the direction of jumps, I will try to extract a proxy of jump direction. I will calculate the difference in the median GC content of the taxa expriencing the inferred jump, and taxa from the immediate sister or related clades without an inferred jump.
+```{r summary_jump_directions }
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo",3))
+config_oi <- "1"
+pp_cutoffs <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75,0.9,0.9,0.9)
+
+get_genera_sp_names <- function(full_GTDB_taxonomy){
+  GTDB_fields <- strsplit(x = full_GTDB_taxonomy, split = ";g__")[[1]]
+  return(paste0("g__", GTDB_fields[2]))
+}
+
+get_descendant_nodes_of_branch <- function(tree_pp, branch_oi){
+  descendant_node <- tree_pp$edge[branch_oi,2]
+  descendant_nodes <- getDescendants(tree_pp, descendant_node)
+  return(descendant_nodes)
+}
+
+parent_dataset <- c()
+taxa_focal <- list() 
+taxa_sister <- list()
+GC_focal <- c()
+GC_sister <- c()
+item_cnt <- 1
+
+for(clade_n in 1:nrow(levolution_best_fit_parameters)){
+  clade_oi <- rownames(levolution_best_fit_parameters)[clade_n]
+  p_folder <- p_folders[clade_n]
+  pp_cutoff <- pp_cutoffs[clade_n]
+  
+  tree_fn <- paste0(clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi, ".post")
+  tree_pp <- read.tree(paste0(data_dir, clade_oi, "_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi, ".post"))
+  trait_values <- read.table(file = paste0(data_dir, clade_oi, "_GTDB_14k_GC.txt"), header = F, row.names = 1, stringsAsFactors = F)
+  
+  jump_branches <- which(tree_pp$edge.length>pp_cutoff)
+
+  for(jump_branch in jump_branches){
+    descendant_nodes <- get_descendant_nodes_of_branch(tree_pp, jump_branch)
+    descendant_branches <- sapply(descendant_nodes, function(y) which(tree_pp$edge[,2]==y))
+    descendant_tips <- intersect(descendant_nodes, 1:length(tree_pp$tip.label))
+
+    jump_anc <- tree_pp$edge[jump_branch,1]
+    sister_branch <- setdiff(which(tree_pp$edge[,1]==jump_anc), jump_branch)
+
+    sister_branch_descendant_nodes <- get_descendant_nodes_of_branch(tree_pp, sister_branch)
+    sister_branch_descendant_branches <- sapply(sister_branch_descendant_nodes, function(x) which(tree_pp$edge[,2]==x))
+    sister_branch_descendant_tips <- intersect(sister_branch_descendant_nodes, 1:length(tree_pp$tip.label))
+    
+    if(length(descendant_tips) > 0 & !length(intersect(descendant_branches,jump_branches))>0 & !length(intersect(sister_branch_descendant_branches,jump_branches))>0){
+      median_GC_jumps <- median(trait_values[tree_pp$tip.label[descendant_tips], "V2"])
+      median_GC_sisters <- median(trait_values[tree_pp$tip.label[sister_branch_descendant_tips], "V2"])
+      
+      GC_focal[item_cnt] <- median_GC_jumps
+      GC_sister[item_cnt] <- median_GC_sisters
+      taxa_focal[[item_cnt]] <- sapply(tree_pp$tip.label[descendant_tips], function(x) get_genera_sp_names(GTDB_14k_metadata[x,"gtdb_taxonomy"][1]), simplify = T)
+      taxa_sister[[item_cnt]] <- sapply(tree_pp$tip.label[sister_branch_descendant_tips], function(x) get_genera_sp_names(GTDB_14k_metadata[x,"gtdb_taxonomy"][1]), simplify = T)
+      parent_dataset[item_cnt] <- clade_oi
+      item_cnt <- item_cnt + 1
+    }
+  }
+}
+
+GC_data_focal_sister <- cbind.data.frame(parent_dataset, as.numeric(format(round(GC_focal,2), nsmall=2)), as.numeric(format(round(GC_sister, 2), nsmall=2)))
+colnames(GC_data_focal_sister) <- c("parent_dataset", "GC_focal", "GC_sister")
+GC_data_focal_sister$GC_diffs <- format(round(GC_data_focal_sister$GC_focal - GC_data_focal_sister$GC_sister, 2), nsmall=2)
+GC_data_focal_sister$taxa_focal <- sapply(taxa_focal, function(x) paste0(x,collapse = " & "))
+GC_data_focal_sister$taxa_sister <- sapply(taxa_sister, function(x) paste0(x,collapse = " & "))
+
+
+write.csv(x = GC_data_focal_sister, file = paste0(data_dir, "jump_magnitudes_details.csv"), quote = T, row.names = F, col.names = T)
+```
+
+
+Lets plot the jump magnitude distributions-
+```{r plot_jump_distributions_data }
+library(viridis)
+GC_data_focal_sister <- read.csv(file = paste0(data_dir, "jump_magnitudes_details.csv"), stringsAsFactors = F)
+GC_diffs <- GC_data_focal_sister$GC_focal - GC_data_focal_sister$GC_sister
+svg(filename = paste0(data_dir, "jump_magnitude_distributions.svg"), width = 5, height = 5)
+hist(GC_diffs, breaks=seq(-34,20, 2), xlab = expression(Delta ~ "GC (focal taxa - related taxa)"), col = c(rep(x = magma(10)[10], length(seq(-34,-2,2))), rep(x = magma(10)[2], length(seq(0,20,2)))), main = "", ylab = "Number of jumps", ylim=c(0,7))
+legend("topright", legend = paste0("Increased GC\n(n = ", length(which(GC_diffs>0)), ")"), fill = magma(10)[2], bty = "n")
+legend("topleft", legend = paste0("Decreased GC\n(n = ", length(which(GC_diffs<0)), ")"), fill = magma(10)[10], bty = "n")
+arrows(x0 = median(GC_diffs[which(GC_diffs<0)]), y0 = 0.5, x1 = median(GC_diffs[which(GC_diffs<0)]), y1 = 0, lwd = 2, length = 0.1)
+arrows(x0 = median(GC_diffs[which(GC_diffs>0)]), y0 = 0.5, x1 = median(GC_diffs[which(GC_diffs>0)]), y1 = 0, lwd = 2, length = 0.1, col = "white")
+dev.off()
+
+print(quantile(x = GC_diffs[which(GC_diffs>0)], probs = 0.5))
+print(quantile(x = GC_diffs[which(GC_diffs<0)], probs = 0.5))
+print(quantile(x = GC_diffs[which(GC_diffs>0)], probs = 0.9))
+print(quantile(x = GC_diffs[which(GC_diffs<0)], probs = 0.1))
+```

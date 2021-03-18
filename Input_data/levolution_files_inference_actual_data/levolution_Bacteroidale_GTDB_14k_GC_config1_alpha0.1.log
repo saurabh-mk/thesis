@@ -1,0 +1,177 @@
+ Levolution 
+************
+- Initializing random generator ... done with seed 159834262!
+- Estimating Lévy parameters:
+   - Reading phylogenetic tree from file '/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_tree.newick ... done!
+      -> Read 1425 nodes and 713 leaves.
+      -> Total tree length = 74.2943
+   - Reading trait values from '/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC.txt' ... done!
+      -> Read traits for 713 leaves.
+   - Preparing variables:
+      - Computing Tau matrix ... done (in 0.23s)!
+      - Computing vector u_k ... done (in 0.05s)!
+      - Computing inverse and determinant of Tau ... done (in 0.61s)!
+   - Reading EM / MCMC settings:
+      - Will run EM for at maximum 100 iterations
+      - The EM will be considered converged if:
+         - A trend could not be rejected with test statistics T < 2 for all parameters.
+         - Random fluctuations were asserted with test statistics N > 0.5 for all parameters.
+         - Trends and random fluctuations will be tested on the last 16 values.
+      - MCMC during EM algorithm:
+         - Will sample 5000 vectors of jumps.
+         - Will keep every 2th step (thinning)
+         - Will discard the first 100 steps as burnin
+         - The total length of each MCMC chain will thus be 10100
+      - MCMC to estimate log likelihood:
+         - Will sample 5000 vectors of jumps.
+         - Will keep every 2th step (thinning)
+         - Will discard the first 100 steps as burnin
+            -> The total length of this MCMC chain will thus be 10100
+   - Computing MLE estimates for null model:
+      - MLE of root state = 39.9745
+      - MLE of Brownian variance = 108.407
+      - log-likelihood of null model = -1886.49
+   - Choosing initial starting values for EM:
+      - Setting root state to null model MLE.
+         -> Root state = 39.9745
+      - Setting Brownian variance to null model MLE.
+         -> Brownian variance = 108.407
+      - Setting jump rate lambda to 1
+   - Parsing alpha values:
+      - Using alpha=0.1
+   - Running EM algorithm for alpha=0.1:
+      - Will write EM also to '/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC_config1_alpha0.1_EM_alpha_0.1.txt'.
+      - Running EM:
+              root_state   brown_var      lambda   maxT   minN
+         1)    3.997e+01   1.084e+02   1.000e+00      -      -     (0s)
+         2)    3.998e+01   9.734e+01   9.938e-01      -      -   (425s)
+         3)    3.997e+01   9.631e+01   1.026e+00      -      - (431.6s)
+         4)    3.998e+01   9.600e+01   1.061e+00      -      - (440.5s)
+         5)    3.997e+01   9.561e+01   1.095e+00      -      - (448.3s)
+         6)    3.998e+01   9.540e+01   1.126e+00      -      - (455.7s)
+         7)    3.997e+01   9.504e+01   1.158e+00      -      - (463.8s)
+         8)    3.998e+01   9.479e+01   1.194e+00      -      - (472.1s)
+         9)    3.998e+01   9.456e+01   1.228e+00      -      - (480.1s)
+         10)   3.998e+01   9.425e+01   1.263e+00      -      - (488.8s)
+         11)   3.997e+01   9.403e+01   1.295e+00      -      - (497.6s)
+         12)   3.997e+01   9.373e+01   1.328e+00      -      - (506.1s)
+         13)   3.998e+01   9.349e+01   1.362e+00      -      - (513.3s)
+         14)   3.998e+01   9.325e+01   1.396e+00      -      - (521.9s)
+         15)   3.997e+01   9.301e+01   1.428e+00      -      - (529.2s)
+         16)   3.999e+01   9.277e+01   1.459e+00      -      -   (537s)
+         17)   3.998e+01   9.248e+01   1.496e+00 451.68   0.00 (544.5s)
+         18)   3.998e+01   9.224e+01   1.531e+00   3.25   0.00 (560.5s)
+         19)   3.998e+01   9.191e+01   1.570e+00   1.37   0.00 (594.5s)
+         20)   3.997e+01   9.164e+01   1.607e+00   1.44   0.00 (601.4s)
+         21)   3.998e+01   9.138e+01   1.643e+00   0.90   0.00 (608.1s)
+         22)   3.997e+01   9.111e+01   1.681e+00   1.25   0.00 (628.2s)
+         23)   3.997e+01   9.083e+01   1.718e+00   1.75   0.00 (644.5s)
+         24)   3.999e+01   9.060e+01   1.753e+00   2.11   0.00 (652.4s)
+         25)   3.998e+01   9.032e+01   1.788e+00   2.23   0.00 (662.6s)
+         26)   3.998e+01   9.009e+01   1.824e+00   2.09   0.00   (665s)
+         27)   3.997e+01   8.990e+01   1.854e+00   1.74   0.00 (662.1s)
+         28)   3.998e+01   8.963e+01   1.891e+00   1.31   0.00 (672.3s)
+         29)   3.997e+01   8.937e+01   1.926e+00   0.98   0.00   (667s)
+         30)   3.999e+01   8.914e+01   1.964e+00   1.11   0.00 (670.9s)
+         31)   3.998e+01   8.888e+01   1.993e+00   1.66   0.00 (691.7s)
+         32)   3.998e+01   8.867e+01   2.025e+00   3.12   0.00 (704.8s)
+         33)   3.999e+01   8.842e+01   2.058e+00 155.64   0.00 (672.4s)
+         34)   3.998e+01   8.823e+01   2.090e+00   3.29   0.00 (737.3s)
+         35)   3.998e+01   8.801e+01   2.128e+00   1.56   0.00 (687.4s)
+         36)   3.998e+01   8.773e+01   2.170e+00   1.08   0.00 (695.7s)
+         37)   3.999e+01   8.752e+01   2.206e+00   0.49   0.00   (706s)
+         38)   4.000e+01   8.726e+01   2.248e+00   1.16   0.00 (712.1s)
+         39)   3.999e+01   8.701e+01   2.283e+00   1.70   0.00   (721s)
+         40)   3.998e+01   8.672e+01   2.322e+00   2.05   0.00 (729.2s)
+         41)   3.999e+01   8.649e+01   2.366e+00   2.15   0.00 (772.6s)
+         42)   4.001e+01   8.621e+01   2.406e+00   1.97   0.00 (753.5s)
+         43)   3.999e+01   8.595e+01   2.441e+00   1.59   0.00 (758.4s)
+         44)   4.000e+01   8.576e+01   2.478e+00   1.05   0.00 (761.8s)
+         45)   3.998e+01   8.553e+01   2.509e+00   0.41   0.00 (769.3s)
+         46)   4.000e+01   8.533e+01   2.543e+00   0.52   0.00 (776.7s)
+         47)   4.000e+01   8.510e+01   2.579e+00   1.40   0.00 (783.8s)
+         48)   3.999e+01   8.492e+01   2.608e+00   3.21   0.00 (790.6s)
+         49)   4.000e+01   8.472e+01   2.644e+00  98.64   0.00   (798s)
+         50)   4.000e+01   8.449e+01   2.677e+00   3.31   0.00 (804.3s)
+         51)   4.000e+01   8.428e+01   2.713e+00   1.47   0.00 (810.3s)
+         52)   3.999e+01   8.409e+01   2.755e+00   0.43   0.00 (819.1s)
+         53)   3.999e+01   8.387e+01   2.785e+00   0.44   0.00 (828.2s)
+         54)   4.000e+01   8.368e+01   2.818e+00   1.10   0.00 (833.6s)
+         55)   4.000e+01   8.349e+01   2.851e+00   1.66   0.00 (839.2s)
+         56)   3.999e+01   8.323e+01   2.886e+00   2.06   0.00 (847.8s)
+         57)   4.003e+01   8.302e+01   2.927e+00   2.20   0.00 (855.2s)
+         58)   4.000e+01   8.285e+01   2.957e+00   2.07   0.00 (863.6s)
+         59)   4.001e+01   8.264e+01   2.996e+00   1.71   0.00 (869.9s)
+         60)   4.001e+01   8.244e+01   3.026e+00   1.17   0.00 (876.3s)
+         61)   4.001e+01   8.218e+01   3.060e+00   0.49   0.00 (881.7s)
+         62)   4.001e+01   8.207e+01   3.087e+00   0.37   0.00 (888.3s)
+         63)   4.001e+01   8.193e+01   3.120e+00   1.33   0.00 (895.6s)
+         64)   3.999e+01   8.178e+01   3.149e+00   3.13   0.00 (902.2s)
+         65)   4.001e+01   8.154e+01   3.177e+00 106.26   0.00 (906.2s)
+         66)   4.000e+01   8.133e+01   3.223e+00   3.22   0.00 (915.6s)
+         67)   4.001e+01   8.111e+01   3.261e+00   1.38   0.00 (923.5s)
+         68)   3.999e+01   8.099e+01   3.292e+00   0.92   0.00 (930.5s)
+         69)   3.999e+01   8.074e+01   3.325e+00   0.91   0.00 (935.6s)
+         70)   4.002e+01   8.057e+01   3.364e+00   1.22   0.00 (942.8s)
+         71)   4.000e+01   8.041e+01   3.395e+00   1.78   0.00 (950.6s)
+         72)   4.001e+01   8.021e+01   3.422e+00   2.17   0.00 (956.2s)
+         73)   4.001e+01   8.008e+01   3.457e+00   2.30   0.00 (961.3s)
+         74)   4.001e+01   7.988e+01   3.490e+00   2.17   0.00 (967.9s)
+         75)   4.002e+01   7.971e+01   3.521e+00   1.79   0.00 (975.5s)
+         76)   3.999e+01   7.956e+01   3.552e+00   1.26   0.00 (981.9s)
+         77)   4.002e+01   7.939e+01   3.585e+00   0.65   0.00 (986.6s)
+         78)   4.001e+01   7.919e+01   3.601e+00   0.67   0.00 (992.4s)
+         79)   4.002e+01   7.911e+01   3.637e+00   1.20   0.00   (997s)
+         80)   4.002e+01   7.896e+01   3.667e+00   3.01   0.00(1001.6s)
+         81)   4.000e+01   7.883e+01   3.689e+00  83.19   0.00(1008.6s)
+         82)   4.000e+01   7.876e+01   3.713e+00   3.51   0.00  (1013s)
+         83)   4.000e+01   7.855e+01   3.740e+00   1.70   0.00(1017.4s)
+         84)   4.002e+01   7.839e+01   3.770e+00   0.82   0.00(1023.8s)
+         85)   4.001e+01   7.824e+01   3.801e+00   0.59   0.00(1032.8s)
+         86)   4.001e+01   7.810e+01   3.833e+00   1.03   0.00(1033.8s)
+         87)   4.001e+01   7.791e+01   3.861e+00   1.58   0.00(1040.6s)
+         88)   4.000e+01   7.776e+01   3.896e+00   1.96   0.00(1044.8s)
+         89)   4.002e+01   7.763e+01   3.919e+00   2.10   0.00(1051.3s)
+         90)   4.003e+01   7.751e+01   3.941e+00   1.98   0.00(1055.7s)
+         91)   4.002e+01   7.739e+01   3.971e+00   1.62   0.00  (1060s)
+         92)   4.002e+01   7.724e+01   3.995e+00   1.10   0.00(1064.7s)
+         93)   4.002e+01   7.710e+01   4.019e+00   0.96   0.00(1070.1s)
+         94)   4.002e+01   7.696e+01   4.050e+00   1.35   0.00(1074.1s)
+         95)   4.002e+01   7.684e+01   4.073e+00   1.47   0.00(1079.8s)
+         96)   4.002e+01   7.674e+01   4.101e+00   3.14   0.00(1084.6s)
+         97)   4.001e+01   7.659e+01   4.130e+00  99.00   0.00(1087.7s)
+         98)   4.000e+01   7.648e+01   4.154e+00   3.30   0.00(1094.1s)
+         99)   4.001e+01   7.627e+01   4.186e+00   2.29   0.00(1098.7s)
+         100)   4.001e+01   7.613e+01   4.221e+00   2.77   0.00(1105.4s)
+         101)   4.003e+01   7.605e+01   4.238e+00   1.71   0.00(1116.8s)
+      - Estimating log-likelihood:
+         - Running MCMC ... done (18.8748min)!
+            -> Acceptance rate was 1.764%
+         - log-likelihood is -1848.7
+         - Observed Fisher information is 0.914656
+            -> Estimated std(lambda) is 1.04561
+         - Poor mans std(lambda) is 0.238834
+   - Parameters with largest log-likelihood:
+      - root_state = 40.029
+      - brown_var = 76.0461
+      - alpha = 0.1
+      - lambda = 4.23788
+   - Computing model choice statistics:
+      - Likelihood of null model = -1886.49
+      - Likelihood of best Lévy model = -1848.7
+      - Likelihood-Ratio-Test D = 75.5732 (chi-square approx. p.value = 1e-16 )
+         -> Lévy model is preferred
+      - Difference in Akaike information criterion = 71.5732 (null model - Lévy model)
+         -> Lévy model is preferred
+   - Estimating location of jumps:
+      - MCMC settings:
+         - Will keep every 2th step (thinning)
+         - Will discard the first 100 steps as burnin
+         - Will sample 5000 vectors of jumps to estimate the position of jumps.
+            -> The total length of this MCMC chain will thus be 10100
+      - Running a standard MCMC:
+         - Running MCMC ... done (18.6072min)!
+            -> Acceptance rate was 1.767%
+         - Writing posterior probabilities to '/extstor/deepalab/Saurabh/GTDB_levolution/Results/Bacteroidale_GTDB_14k_GC_config1_alpha0.1.post' done!
+- Program terminated in 1.4e+03 min!
+

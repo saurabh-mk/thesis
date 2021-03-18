@@ -1,0 +1,88 @@
+******************************************************************
+*                     Map NH, version 1.1.1                      *
+* Authors: J. Dutheil                       Created on  09/12/10 *
+*          B. Boussau                       Modif. 17/12/11      *
+*          L. Guéguen                       Last Modif. 24/11/14 *
+******************************************************************
+
+Parsing options:
+Parsing file /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae/map_dNdS_per_branch_Buchnera_Macrosiphidinae.bpp for options.
+Parsing file /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae/model_nonhom_ml_Buchnera_Macrosiphidinae_nonHEG_orthologs10_set1.params for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae_nonHEG_orthologs10_set1.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: no
+Number of sequences....................: 8
+Number of sites........................: 3063
+Input tree file .......................: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae/tree_nonhom_ml_Buchnera_Macrosiphidinae_nonHEG_orthologs10_set1.dnd
+Input tree format .....................: Newick
+Number of leaves.......................: 8
+WARNING!!! Parameter output.tree_with_id.file not specified. Default used instead: none
+Heterogeneous model....................: general
+Number of distinct models..............: 2
+StopCodon frequencies distribution ....: quadratic
+StopCodon frequencies distribution ....: quadratic
+Parameter found........................: 1_Full.theta=0.350543
+Parameter found........................: 1_Full.theta1=0.578701
+Parameter found........................: 1_Full.theta2=0.654823
+Parameter found........................: 2_Full.theta=0.29997
+Parameter found........................: 2_Full.theta1=0.518443
+Parameter found........................: 2_Full.theta2=0.4405
+Parameter found........................: 3_Full.theta=0.0521761
+Parameter found........................: 3_Full.theta1=0.522037
+Parameter found........................: 3_Full.theta2=0.979211
+Root frequencies ......................: F3X4
+Stationarity assumed...................: no
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_1=2.34571
+Parameter found........................: YN98.omega_1=0.0537583
+Parameter found........................: YN98.1_Full.theta_1=0.381848
+Parameter found........................: YN98.1_Full.theta1_1=0.524253
+Parameter found........................: YN98.1_Full.theta2_1=0.569833
+Parameter found........................: YN98.2_Full.theta_1=0.317961
+Parameter found........................: YN98.2_Full.theta1_1=0.587588
+Parameter found........................: YN98.2_Full.theta2_1=0.47541
+Parameter found........................: YN98.3_Full.theta_1=0.163609
+Parameter found........................: YN98.3_Full.theta1_1=0.491769
+Parameter found........................: YN98.3_Full.theta2_1=0.436471
+Model1 is associated to................: 13 node(s).
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_2=2.18134
+Parameter found........................: YN98.omega_2=0.0493271
+Parameter found........................: YN98.1_Full.theta_2=0.468635
+Parameter found........................: YN98.1_Full.theta1_2=0.529286
+Parameter found........................: YN98.1_Full.theta2_2=0.573148
+Parameter found........................: YN98.2_Full.theta_2=0.337042
+Parameter found........................: YN98.2_Full.theta1_2=0.591399
+Parameter found........................: YN98.2_Full.theta2_2=0.465867
+Parameter found........................: YN98.3_Full.theta_2=0.172289
+Parameter found........................: YN98.3_Full.theta1_2=0.470567
+Parameter found........................: YN98.3_Full.theta2_2=0.372229
+Model2 is associated to................: 1 node(s).
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=0.885081
+- Category 0 (Pr = 0.2) rate...........: 0.086667
+- Category 1 (Pr = 0.2) rate...........: 0.323207
+- Category 2 (Pr = 0.2) rate...........: 0.665611
+- Category 3 (Pr = 0.2) rate...........: 1.21305
+- Category 4 (Pr = 0.2) rate...........: 2.71147
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Log-Likelihood.........................: -39495.4
+Substitution Register..................: DnDs
+  * Count type 1.......................: dS
+  * Count type 2.......................: dN
+null Parameter YN98.omega*.............: 1
+WARNING!!! Parameter test.global not specified. Default used instead: 0
+WARNING!!! Parameter test.branch not specified. Default used instead: 0
+Output counts of type 1 to file........: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae_nonHEG_orthologs10_set1.fa.counts_dS.dnd
+Output counts of type 2 to file........: /home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/Github_supplementary/Results/mapNH/Buchnera_Macrosiphidinae/Buchnera_Macrosiphidinae_nonHEG_orthologs10_set1.fa.counts_dN.dnd
+MapNH's done. Bye.
+Total execution time: 0.000000d, 0.000000h, 0.000000m, 41.000000s.

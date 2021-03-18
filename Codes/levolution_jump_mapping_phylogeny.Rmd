@@ -1,0 +1,105 @@
+---
+title: "Mapping GC content jumps to phylogenies"
+output: html_notebook
+---
+
+### Background
+
+
+```{r levolution_output_analysis }
+library(phytools)
+library(rncl)
+library(ggplot2)
+library(ggpubr)
+library(viridis)
+
+main_dir <- "/home/saurabh/Documents/Deepas_lab_Backup/Deepas_lab/Reports_presentations/Thesis/organized_detailed/"
+res_dir <- out_dir <- paste0(main_dir, "Input_data/levolution_files_inference_actual_data/")
+
+data_folder <- paste0(main_dir, "Input_data/phylogenies/")
+
+GTDB_14k_metadata <- read.delim(file =paste0(data_folder, "GTDB_bac_metadata_r80_pruned0.01.tsv"), header = T, row.names = 1, stringsAsFactors = F)
+```
+
+
+### Jump maps with chosen cutoffs
+I have examined he precision-recall curves for simulated datasets. I find that for simulations on clades where the variance of jumps is similar to the variance of the Brownian process, then posterior probabilities (pps) > 0.75 are associated with precision >80%. For pps < 0.75, precision falls rapidly with pps. Therefore, I chose to use a cutoff of pp=0.75 in these cases (Sphingomonadale, Rhodobacterale, Rhizobiale, Alpha1, Flavobacteriale). However, for simulations on clades where the variance of jumps is lower than the variance of the Brownian process, then the precision falls rapidly with decreasing pps. Therefore, in this case, I chose to use a pp cutoff of 0.95 (Alpha1, Bacteroidale, Cytophagale).
+```{r levolution_plot_pps_cutoffs }
+clades_oi <- c("Sphingomonadale", "Rhizobiale", "Rhodobacterale", "Alpha1", "Bacteroidale", "Cytophagale", "Flavobacteriale", "Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Alphaproteo",4), rep("Bacteroidetes",3), rep("Gammaproteo",3))
+pp_cutoffs <- c(0.75,0.75,0.75,0.95,0.95,0.95,0.75, 0.9,0.9,0.9)
+alphas_oi <- c(1,1,1,0.5,0.25,0.25,1,0.25,0.5,0.5)
+
+config_oi <- 1
+
+for(clade_n in 1:length(clades_oi)){
+  clade_oi <- clades_oi[clade_n]
+  pp_cutoff <- pp_cutoffs[clade_n]
+  alpha_oi <- alphas_oi[clade_n]
+  p_folder <- p_folders[clade_n]
+  
+  tree_pp <- read.newick(file = paste0(res_dir,clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,".post"))
+  tree_in <- read.newick(paste0(data_folder,clade_oi,"_GTDB_14k_tree.newick"))
+  
+  tree_in_labeled <- tree_in
+  tree_in_labeled$tip.label <- sapply(tree_in$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+
+  trait_oi <- GTDB_14k_metadata[tree_in$tip.label,"gc_percentage"]
+  names(trait_oi) <- sapply(tree_in$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+  GC_map <- contMap(tree = tree_in_labeled, x = trait_oi, plot = F)
+  # GC_map <- setMap(GC_map,colors=magma(n = 256, direction = -1))
+  GC_map <- setMap(GC_map,colors=plasma(n = 256, direction = -1))
+  # GC_map <- setMap(GC_map,c(grey(0.8),"black"))
+
+  svg(filename = paste0(out_dir,"levolution_",clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_pp", pp_cutoff, "_unlabelled_jumpNum_plasma_scale.svg"), width = 25, height = 35)
+  
+  h_oi <- max(nodeHeights(GC_map$tree))
+  plot(x = GC_map, fsize = 0.001, lwd = 3, outline = F, legend=F, xlim=c(-0.1*h_oi, 1.2*h_oi), y=c(-length(GC_map$tree$tip.label), 2*length(GC_map$tree$tip.label)))
+  axis(1)
+  title(xlab="time from the root")
+  ## Plotting with serial number of jump
+  edgelabels(edge = which(tree_pp$edge.length>pp_cutoff), text = as.character(sprintf("%02d", 1:length(which(tree_pp$edge.length>pp_cutoff)))), frame = "circle", cex = 1.5, width = 1.5)
+  add.color.bar(leg = 0.5, cols = GC_map$cols, title = "GC %", lims = GC_map$lims, digits = 2, lwd = 20, outline = F, prompt = F, fsize=4)#, x=1.1*h_oi, y=0.7*length(GC_map$tree$tip.label))#, direction="upwards") #leg = 0.2*length(GC_map$tree$tip.label),  subtitle="",
+  title(main = clade_oi, line = -3, cex.main=5)
+  dev.off()
+}
+```
+
+### Jump maps with chosen cutoffs
+I have generated and examined the precision-recall curves for these simulated datasets on three subclades of Gammaproteobacteria. For all three- Pseudomonadale, Enterobacterales, Betaproteo, the variance in jump magnitudes is lower than the variance of the Brownian process. As expected from earlier such datasets, in all three, precision of jump inference drops drastically with recall, such that using a cut-off of 0.9 leads to a reasonable precision (~70%), but low recall (10-20%).  Nevertheless, this appears to be the best choice for now.
+```{r levolution_plot_pps_cutoffs_Gammaproteo }
+library(viridis)
+clades_oi <- c("Pseudomonadale", "Enterobacterales", "Betaproteo")
+p_folders <- c(rep("Gammaproteo",3))
+pp_cutoffs <- c(0.9,0.9,0.9)
+alphas_oi <- c(0.25,0.5,0.5)
+config_oi <- 1
+
+for(clade_n in 1:length(clades_oi)){
+  clade_oi <- clades_oi[clade_n]
+  pp_cutoff <- pp_cutoffs[clade_n]
+  alpha_oi <- alphas_oi[clade_n]
+  p_folder <- p_folders[clade_n]
+  
+  tree_pp <- read.newick(file = paste0(res_dir,clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,".post"))
+  tree_in <- read.newick(paste0(data_folder,clade_oi,"_GTDB_14k_tree.newick"))
+  
+  tree_in_labeled <- tree_in
+  tree_in_labeled$tip.label <- sapply(tree_in$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+
+  trait_oi <- GTDB_14k_metadata[tree_in$tip.label,"gc_percentage"]
+  names(trait_oi) <- sapply(tree_in$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+  GC_map <- contMap(tree = tree_in_labeled, x = trait_oi, plot = F)
+  GC_map <- setMap(GC_map,colors=magma(n = 256, direction = -1))
+
+  svg(filename = paste0(out_dir,"levolution_",clade_oi,"_GTDB_14k_GC_config", config_oi, "_alpha", alpha_oi,"_pp", pp_cutoff, "_unlabelled_jumpNum_magma.svg"), width = 25, height = 35)
+    
+  h_oi <- max(nodeHeights(GC_map$tree))
+  plot(x = GC_map, fsize = 0.001, lwd = 3, outline = F, legend=F, xlim=c(-0.1*h_oi, 1.2*h_oi))
+  ## Plotting with serial number of jump
+  edgelabels(edge = which(tree_pp$edge.length>pp_cutoff), text = as.character(sprintf("%02d", 1:length(which(tree_pp$edge.length>pp_cutoff)))), frame = "circle", cex = 1.5, width = 1.5)
+  add.color.bar(leg = 0.2*length(GC_map$tree$tip.label), cols = GC_map$cols, title = "GC %", lims = GC_map$lims, digits = 2, lwd = 5, outline = F, prompt = F, subtitle="", fsize=4, x=1.1*h_oi, y=0.7*length(GC_map$tree$tip.label), direction="upwards")
+  title(main = clade_oi, line = -3, cex.main=5)
+  dev.off()
+}
+```

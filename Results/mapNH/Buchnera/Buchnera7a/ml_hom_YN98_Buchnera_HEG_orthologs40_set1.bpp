@@ -1,0 +1,32 @@
+SEQ=Buchnera_HEG_orthologs40_set1.fa
+IN_TREE=Buchnera_genome_tree.newick
+OUT_TREE=Buchnera/tree_hom_ml_YN98_Buchnera.dnd
+P_OUTPUT=Buchnera/model_hom_ml_YN98_Buchnera.param
+
+alphabet=Codon(letter=DNA)
+genetic_code=Standard
+
+### Alignment
+input.sequence.file = $(SEQ)
+input.sequence.sites_to_use = all
+
+### Initial tree
+input.tree.file= $(IN_TREE)
+
+### Description of the modeling 
+rate_distribution = Gamma(n=5, alpha=1)
+
+nonhomogeneous = general
+nonhomogeneous.number_of_models = 1
+nonhomogeneous.stationarity = yes
+
+### tree output file
+output.tree.file = $(OUT_TREE)
+
+### model ouput file
+output.estimates= $(P_OUTPUT)
+
+model1 = YN98(frequencies=F3X4(init=observed))
+model1.nodes_id = 0:11
+
+input.sequence.remove_stop_codons = yes

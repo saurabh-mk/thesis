@@ -1,0 +1,506 @@
+---
+title: "A full pipeline to analyze dN, dS of a focal clade using bppml and mapNH starting from GTDB phylogeny"
+output: html_notebook
+---
+
+#### Background
+We want to estimate dN and dS of selected focal clades from the GTDB phylogeny, where jumps in GC content were inferred. This invovles the following steps-
+1. extraction of a subtree from GTDB with the focal clade and immediately related clades (sister clade and immediate outgroups)
+2. identification of shared orthologs in this set of genomes
+3. alignment of a subset of orthologs
+4. estimation of dN and dS using bppml and mapNH
+
+This pipeline performs all steps by calling the different programs including custom scripts and stand-alone programs.
+
+#### Preparation
+```{r common_code }
+clade_oi <- "Verminephrobacter"
+main_dir <- "/"
+
+n_cores_av <- 3
+
+library(phytools)
+library(rncl)
+library(seqinr)
+
+source(file = paste0(main_dir, "Codes/plotTree.wBars.R"))
+source(paste0(main_dir, "Codes/tree_pruning_function.R"))
+download_script <- paste0(main_dir, "Codes/download_genome_files_from_GCFonly_generic.py")
+
+datasets_summary <- read.table(file = paste0(main_dir, "Input_data/datasets_summary2.tab"), header = T, stringsAsFactors = F)
+
+GTDB_14k_tree <- read_newick_phylo(file = paste0(main_dir, "Input_data/phylogenies/GTDB_bac120_r80_pruned0.01.newick"))
+GTDB_14k_metadata <- read.delim(file = paste0(main_dir, "Input_data/phylogenies/GTDB_bac_metadata_r80_pruned0.01.tsv"), header = T, row.names = 1, stringsAsFactors = F)
+
+GTDB_14k_tree_labeled <- GTDB_14k_tree
+GTDB_14k_tree_labeled$tip.label <- sapply(GTDB_14k_tree$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+
+common_dir <- paste0(main_dir, "Input_data/phylogenies/")
+gd_base <- paste0(main_dir, "Input_data/GTDB_data/GTDB_")
+
+sd_dir <- paste0(common_dir,clade_oi,"/")
+system2(command = "mkdir", args = sd_dir)
+
+mapnh_sd_dir <- paste0(main_dir, "Results/mapNH/", clade_oi, "/")
+system2(command = "mkdir", args = c(mapnh_sd_dir))
+mapnh_sp_sd_dir <- paste0(mapnh_sd_dir,clade_oi,"/")
+system2(command = "mkdir", args = c(mapnh_sp_sd_dir))
+```
+
+#### Extract subtree from GTDB phylogeny
+Lets extract the relevant subclade from GTDB phylogeny-
+```{r extract_clade_oi }
+mrca_str <- datasets_summary[clade_oi, "mrca_str"]
+subclade_mrca <- getMRCA(phy = GTDB_14k_tree, tip = grep(pattern = mrca_str, x = GTDB_14k_tree_labeled$tip.label))
+
+subclade_GTDB_14k_tree_labeled <- extract.clade(phy = GTDB_14k_tree_labeled, node = subclade_mrca)
+plot(subclade_GTDB_14k_tree_labeled, cex=0.5)
+
+subclade_GTDB_14k_tree <- extract.clade(phy = GTDB_14k_tree, node = subclade_mrca)
+```
+
+#### Download genome files
+Let us download the genome and annotation files for taxa belonging to this clade.
+```{r get_genomeFiles_from_NCBI, eval=F }
+GTDB_genome_ids_oi <- sapply(subclade_GTDB_14k_tree$tip.label, function(x) if(grepl(pattern = "GB_|RS_", x = x)){paste0(strsplit(x = x, split = "")[[1]][4:18], collapse = "")} else{x})
+write.table(unname(unlist(GTDB_genome_ids_oi)), file = paste0(common_dir,clade_oi,"/required_GCFonly_ids.txt"), quote = F, row.names = F, col.names = F)
+
+fn_types <- c("ass_fn", "fna_fn", "ft_fn", "cds_fn", "prot_fn")
+gdirs_oi <- c("assembly_reports/", "genomes/", "feature_tables/", "cds/", "proteins/")
+names(gdirs_oi) <- fn_types
+
+##download all required genome files
+for(fn_type in fn_types){
+  system2(command = "python", args = c(download_script, "-wd", sd_dir, "-list_fn", "required_GCFonly_ids.txt", "-fn_type", fn_type, "-od", paste0(gd_base, gdirs_oi[fn_type]), "-sd", sd_dir))
+}
+```
+
+#### Sample taxa to get final subtree
+Not all genomes are available or annotated in NCBI, e.g. because they are metagenome assembled (MAGs). These genomes are also typically population level genomes i.e. not of isolated cells. Since we need isolated, complete, and annotated genomes for accurate downstream analysis like dN, dS estimation, mutation bias estimation, and repair enzyme presence/absence, we must proceed only with taxa for which genomes are available.
+```{r get_available_phylogeny }
+genome_ids_oi <- read.csv(file = paste0(sd_dir,"cds_fn_GCFids_found.txt"), header = F, stringsAsFactors = F, row.names = subclade_GTDB_14k_tree$tip.label)
+valid_GTDB_ids <- rownames(genome_ids_oi)[!is.na(genome_ids_oi$V1)]
+
+valid_subclade_GTDB_tree <- drop.tip(phy = subclade_GTDB_14k_tree, tip = setdiff(subclade_GTDB_14k_tree$tip.label, valid_GTDB_ids))
+
+valid_subclade_GTDB_tree_labelled <- valid_subclade_GTDB_tree
+valid_subclade_GTDB_tree_labelled$tip.label <- sapply(valid_subclade_GTDB_tree$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+
+plot(valid_subclade_GTDB_tree_labelled, cex=0.75)
+add.scale.bar()
+valid_GC <- GTDB_14k_metadata[valid_subclade_GTDB_tree$tip.label,"gc_percentage"]
+names(valid_GC) <- valid_subclade_GTDB_tree$tip.label
+plotTree.barplot(tree = valid_subclade_GTDB_tree, x = valid_GC, args.barplot = list(xlab="GC %"))
+```
+
+```{r prune_available_phylogeny, eval=F}
+source(paste0(main_dir, "Codes/tree_pruning_function.R"))
+pruning_threshold <- datasets_summary[clade_oi, "prune_threshold"]
+subclade_GTDB_14k_tree_pruned <- prune_tree(tree_oi = valid_subclade_GTDB_tree, dist_cutoff = pruning_threshold)
+subclade_GTDB_14k_tree_pruned_labeled <- subclade_GTDB_14k_tree_pruned
+subclade_GTDB_14k_tree_pruned_labeled$tip.label <- sapply(subclade_GTDB_14k_tree_pruned$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+plot(subclade_GTDB_14k_tree_pruned_labeled, cex=0.75)
+add.scale.bar()
+
+sp_tree_dir <- paste0(sd_dir,clade_oi,"_trees/")
+system2(command = "mkdir", args = sp_tree_dir)
+
+write.tree(subclade_GTDB_14k_tree_pruned, file = paste0(sp_tree_dir, clade_oi, "_GTDB_14k_tree_pruned", pruning_threshold, ".newick"))
+write.table(x = genome_ids_oi[subclade_GTDB_14k_tree_pruned$tip.label,"V1"], file = paste0(sd_dir,clade_oi,"_genomes_list.txt"), quote = F, row.names = F, col.names = F)
+```
+
+```{r write_phylogenies }
+#read the tree pruned above again from file
+subclade_GTDB_14k_tree_pruned <- read.tree(paste0(sp_tree_dir, clade_oi,"_GTDB_14k_tree_pruned", pruning_threshold, ".newick"))
+
+#replace tip labels with full genome ids compatible with NCBI accession
+subclade_GTDB_14k_tree_genome_ids <- subclade_GTDB_14k_tree_pruned
+subclade_GTDB_14k_tree_genome_ids$tip.label <- genome_ids_oi[subclade_GTDB_14k_tree_pruned$tip.label, "V1"]
+#write the tree with genome ids
+write.tree(subclade_GTDB_14k_tree_genome_ids, file = paste0(sp_tree_dir,clade_oi,"_GTDB_14k_tree_pruned", pruning_threshold, "_genome_ids.newick"))
+
+#remove nodelabels because bppml may not like it
+subclade_GTDB_14k_tree_genome_ids$node.label <- NULL
+write.tree(subclade_GTDB_14k_tree_genome_ids, file = paste0(mapnh_sd_dir,clade_oi, "_GTDB_14k_bppml.newick"))
+
+#write the pruned tree with full labels
+subclade_GTDB_14k_tree_pruned_labeled <- subclade_GTDB_14k_tree_pruned
+subclade_GTDB_14k_tree_pruned_labeled$tip.label <- sapply(subclade_GTDB_14k_tree_pruned$tip.label, function(x) GTDB_14k_metadata[x,"gtdb_taxonomy"])
+write.tree(subclade_GTDB_14k_tree_pruned_labeled, file = paste0(sp_tree_dir,clade_oi, "_GTDB_14k_tree_pruned", pruning_threshold, "_labeled.newick"))
+
+#write a labelled tree with shorter labels
+shorten_code <- paste0(main_dir, "Codes/shorten_taxa_names_from_assembly_report.py")
+system2(command = "python", args = c(shorten_code, "-wd", sd_dir, "-list_fn", paste0(clade_oi,"_genomes_list.txt"), "-dd", paste0(gd_base,"assembly_reports/"), "-out_fn", paste0(clade_oi,"_GCF_ids_shortnames.txt")))
+GCF_short_names <- read.table(paste0(sd_dir, clade_oi,"_GCF_ids_shortnames.txt"), stringsAsFactors = F, row.names = 1, header = F, sep="\t")
+subclade_GTDB_14k_tree_pruned_short_labeled <- subclade_GTDB_14k_tree_genome_ids
+subclade_GTDB_14k_tree_pruned_short_labeled$tip.label <- sapply(subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) GCF_short_names[x, "V2"])
+write.tree(subclade_GTDB_14k_tree_pruned_short_labeled, file = paste0(sp_tree_dir,clade_oi, "_GTDB_14k_tree_pruned", pruning_threshold, "_shortLabeled.newick"))
+```
+
+#### Identify shared orthologs
+Now lets get to identifying orthologs. Here, we are going to do this via reciprocal best blast hits method. First, we need to blast all proteomes of interest against each other, then identify reciprocal best hits.
+
+##### Create protein DBs
+Lets start by creating proteome file databases.
+```{r create_prot_db }
+for(genome_id_oi in subclade_GTDB_14k_tree_genome_ids$tip.label){
+  prot_fn <- paste0(gd_base,"proteins/",genome_id_oi,"_protein.faa")
+  prot_db_fn <- paste0(gd_base,"prot_db/",genome_id_oi,"_prot.db")
+  system2(command = "makeblastdb", args = c("-in", prot_fn, "-out", prot_db_fn, "-parse_seqids", "-dbtype", "prot"))
+}
+```
+
+##### All by all BLAST
+```{r run_all_by_all_blast }
+library(parallel)
+no_cores <- n_cores_av ##choose the appropriate number of cores
+cl_oi <- makeCluster(no_cores, type = "FORK")
+
+parLapply(cl = cl_oi, X = subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) lapply(X = subclade_GTDB_14k_tree_genome_ids$tip.label, function(y) system2(command = "blastp", args = c("-query", paste0(gd_base,"proteins/",x,"_protein.faa"), "-db", paste0(gd_base,"prot_db/",y,"_prot.db"), "-out", paste0(gd_base,"blast_op/",x,"_",y,"_blast_op.dat"), "-evalue", "1e-5", "-outfmt", shQuote("10 qaccver saccver qstart qend qlen slen evalue length")), stdout = paste0(sd_dir,clade_oi,"_blastp.stdout"), stderr = paste0(sd_dir,clade_oi,"_blastp.stderr"))))
+```
+
+##### Reciprocal BLAST
+This is the main part where the reciprocal blast best hits algorithm is implemented.
+
+First, lets find a reference genome:
+```{r find_appropriate_reference_genome }
+sd_dir <- paste0(common_dir,clade_oi,"/")
+genome_list_fn <- paste0(sd_dir, clade_oi, "_genomes_list.txt")
+genome_list <- read.table(file = genome_list_fn, stringsAsFactors = F)
+    
+for(genome_oi in genome_list$V1){
+  prot_fn <- paste0(gd_base, "proteins/", genome_oi, "_protein.faa")
+  prot_list <- read.fasta(file = prot_fn, seqtype = "AA", set.attributes = T, strip.desc = T)
+  HEG_annotations <- grep(pattern = "50S ribosomal protein|30S ribosomal protein|translation elongation factor|RNA polymerase", x = getAnnot(prot_list), fixed = F)
+  if(length(HEG_annotations)>50){
+    print(paste0("ref genome is ", genome_oi,"; found ", length(HEG_annotations), " HEGs"))
+    ref_GCF <- genome_oi
+    break
+  }
+}
+```
+
+```{r find_single_copy_orthologs }
+##function to get reciprocal best blasts, for a given genome pair
+get_rbbs <- function(ref_GCF, GCF_oi){
+  shared_ortholog_list <- rep(NA, length(ref_prots))
+  shared_ortholog_list <- setNames(shared_ortholog_list,names(ref_prots))
+  
+  blast_df <- read.csv(file = paste0(blast_op_dir,ref_GCF,"_",GCF_oi,"_blast_op.dat"), header = F, col.names = col_names, stringsAsFactors = F)
+  
+  valid_hits_df <- blast_df[which(blast_df$length/blast_df$qlen > 0.75),]
+  qacc_unique <- unique(valid_hits_df$qacc)
+  rblast_df <- read.csv(file = paste0(blast_op_dir,GCF_oi,"_",ref_GCF,"_blast_op.dat"), header = F, col.names = col_names, stringsAsFactors = F)
+  rvalid_hits_df <- rblast_df[which(rblast_df$length/rblast_df$qlen > 0.75),]
+  
+  #identify hit with best e-value, this is usually the first hit in the list,
+  #so I will just identify first occurence of query in the list of query-hit pairs
+  f_best_hits <- sapply(qacc_unique, function(x) valid_hits_df[which(valid_hits_df$qacc==x)[1],"sacc"])
+  for(q_oi in names(f_best_hits)){
+    hit_oi <- f_best_hits[q_oi]
+    if(any(grepl(pattern = hit_oi, x = rvalid_hits_df$qacc))){
+      if(grepl(pattern = rvalid_hits_df$sacc[grep(pattern = hit_oi, x = rvalid_hits_df$qacc)[1]],q_oi)){
+        shared_ortholog_list[[q_oi]] <- rvalid_hits_df$qacc[grep(pattern = hit_oi, x = rvalid_hits_df$qacc)[1]]
+      }
+    }
+  }
+  return(shared_ortholog_list)
+}
+
+col_names <- c("qacc", "sacc", "qstart", "qend", "qlen", "slen", "evalue", "length")
+blast_op_dir <- paste0(gd_base,"blast_op/")
+ref_prots <- read.fasta(file = paste0(gd_base,"proteins/",ref_GCF,"_protein.faa"), seqtype = "AA", set.attributes = T, strip.desc = F)
+
+cl_oi <- makeCluster(n_cores_av, type = "FORK")
+clusterExport(cl=cl_oi, varlist=c("ref_GCF"))
+
+shared_ortholog_list_of_list <- parLapply(cl = cl_oi, X=subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) get_rbbs(ref_GCF, x))
+stopCluster(cl_oi)
+  
+shared_ortholog_df <- data.frame(shared_ortholog_list_of_list, row.names = names(shared_ortholog_list_of_list[[1]]), stringsAsFactors = F)
+colnames(shared_ortholog_df) <- subclade_GTDB_14k_tree_genome_ids$tip.label
+  
+shared_ortholog_bool <- sapply(rownames(shared_ortholog_df), function(x) !anyNA(shared_ortholog_df[x,]))
+shared_orthologs <- rownames(shared_ortholog_df)[shared_ortholog_bool]
+  
+cds_aln_dir <- paste0(sd_dir,clade_oi,"_cds_alignments/")
+system2(command = "mkdir", args = c(cds_aln_dir))
+write.table(x = shared_orthologs,file = paste0(cds_aln_dir,"ref_orthologs_list.txt"), quote = F, row.names = F, col.names = F)
+write.table(x = shared_ortholog_df[shared_ortholog_bool,],file = paste0(cds_aln_dir,"ref_orthologs_sets_list.txt"), quote = F, row.names = F, col.names = F)
+```
+
+#### Extract protein and cds sequences for shared orthologs
+```{r extract_protein_cds_seqs }
+prot_dir <- paste0(gd_base,"proteins/")
+cds_dir <- paste0(gd_base,"cds/")
+
+shared_orthologs_df <- read.table(paste0(cds_aln_dir,"ref_orthologs_sets_list.txt"), stringsAsFactors = F)
+rownames(shared_orthologs_df) <- shared_orthologs_df[,which(subclade_GTDB_14k_tree_genome_ids$tip.label==ref_GCF)]
+colnames(shared_orthologs_df) <- subclade_GTDB_14k_tree_genome_ids$tip.label
+  
+for(GCF_n in 1:length(subclade_GTDB_14k_tree_genome_ids$tip.label)){
+  GCF_oi <- subclade_GTDB_14k_tree_genome_ids$tip.label[GCF_n]
+  prot_seqs_oi <- read.fasta(file = paste0(prot_dir,GCF_oi,"_protein.faa"), seqtype = "AA", set.attributes = T, strip.desc = F)
+  cds_seqs_oi <- read.fasta(file = paste0(cds_dir,GCF_oi,"_cds_from_genomic.fna"), seqtype = "DNA", set.attributes = T, strip.desc = F)
+  for(ortho_n in 1:nrow(shared_orthologs_df)){
+    ref_ortho <- rownames(shared_orthologs_df)[ortho_n]
+    ortho_oi <- shared_orthologs_df[ref_ortho,GCF_oi]
+    write.fasta(sequences = prot_seqs_oi[ortho_oi], names = GCF_oi, file.out = paste0(cds_aln_dir,ref_ortho,"_prot.fas"), open = "a")
+    write.fasta(sequences = cds_seqs_oi[which(grepl(pattern = ortho_oi,names(cds_seqs_oi)))], names = GCF_oi, file.out = paste0(cds_aln_dir,ref_ortho,"_cds.fas"), open = "a")
+  }
+}
+```
+
+#### Align and concatenate
+```{r extract_align_concatenate_genesets }
+prank_cds_alignment_code <- paste0(main_dir, "Codes/prank_alignment_cds_v2.sh")
+gblocks_cds_alignment_cleanup_code <- paste0(main_dir, "Codes/gblocks_cleaning_cds2.sh")
+gene_types <- 2
+gene_sets <- c("nonHEG", "HEG")
+n_sets <- 1
+set_size <- 10
+
+GCF_short_names <- read.table(paste0(sd_dir, clade_oi, "_GCF_ids_shortnames.txt"), stringsAsFactors = F, row.names = 1, header = F, sep="\t")
+
+subclade_GTDB_14k_tree_shortLabeled <- subclade_GTDB_14k_tree_genome_ids
+subclade_GTDB_14k_tree_shortLabeled$tip.label <- sapply(subclade_GTDB_14k_tree_genome_ids$tip.label, function(x) GCF_short_names[x,"V2"])
+  
+shared_orthologs_df <- read.table(paste0(cds_aln_dir,"ref_orthologs_sets_list.txt"), stringsAsFactors = F)
+rownames(shared_orthologs_df) <- shared_orthologs_df[,which(subclade_GTDB_14k_tree_genome_ids$tip.label==ref_GCF)]
+colnames(shared_orthologs_df) <- subclade_GTDB_14k_tree_genome_ids$tip.label
+
+nonHEG_list <- c()
+HEG_list <- c()
+cds_names <- c()
+  
+ref_cds_fn <- paste0(gd_base, "cds/", ref_GCF, "_cds_from_genomic.fna")
+ref_cds <- read.fasta(file = ref_cds_fn, seqtype = "DNA", set.attributes = T, strip.desc = T)
+for(o_oi in rownames(shared_orthologs_df)){
+  cds_n <- grep(pattern = o_oi, x = getName(ref_cds), value = F)
+  cds_names <- c(cds_names, names(ref_cds)[cds_n])
+  if(grepl(pattern = "50S ribosomal protein|30S ribosomal protein|translation elongation factor|RNA polymerase", x = getAnnot(ref_cds[[cds_n[1]]]), fixed = F)==F){
+    nonHEG_list <- c(nonHEG_list, o_oi)
+  }
+  else{
+    HEG_list <- c(HEG_list, o_oi)
+  }
+}
+list_genes <- list(nonHEG_list, HEG_list)
+
+par(mfrow=c(1,2))
+for(set_n in 1:n_sets){## different subsample sets, in case we sample and analyse multiple ortholog sets
+  for(gene_type_n in 1:1){#gene_types){
+    gene_set <- gene_sets[gene_type_n]
+    gene_list <- list_genes[[gene_type_n]]
+    
+    alns_oi_subsample <- list()
+    sample_oi <- sample(x = length(gene_list), size = min(length(gene_list), set_size), replace = F)
+    write.table(x = gene_list[sample_oi],file = paste0(cds_aln_dir,gene_set,"_set", set_n,"_ref_orthologs",set_size,"_list.txt"), quote = F, row.names = F, col.names = F)
+
+    ###align selected genes
+    ortholog_subset_fn <- paste0(cds_aln_dir,gene_set,"_set", set_n,"_ref_orthologs",set_size,"_list.txt")
+    phylo_dir <- paste0(main_dir, "Input_data/phylogenies/")
+    system2(command = "parallel", args = c(paste0("-j",n_cores_av), "-a", ortholog_subset_fn, prank_cds_alignment_code, ":::", phylo_dir, ":::", clade_oi))
+    system2(command = "parallel", args = c(paste0("-j",n_cores_av), "-a", ortholog_subset_fn, gblocks_cds_alignment_cleanup_code, ":::", phylo_dir, ":::", clade_oi))
+
+    for(i in seq(1,length(sample_oi))){
+      aln_fn <- paste0(cds_aln_dir, gene_list[sample_oi[i]],".best.nuc.fas.aln")
+      alns_oi_subsample[[i]] <- read.dna(aln_fn, format = "f", as.character = T)
+    }
+    
+    ###concatenate all selected alignments now
+    #get the cumulative length of all alignments
+    total.length <- 0
+    for(i in 1:length(alns_oi_subsample)){
+      total.length <- total.length + ncol(alns_oi_subsample[[i]])
+    }
+    taxa <- row.names(alns_oi_subsample[[1]])
+    
+    #empty matrix to store concatenated alignment
+    seq_matrix <- matrix(data = "n", nrow = length(taxa), ncol = total.length-3*length(alns_oi_subsample))
+    row.names(seq_matrix) <- taxa
+    
+    col_oi <- 0
+    #iterate over orthologs
+    for(aln_n in 1:length(alns_oi_subsample)){
+      print(aln_n)
+      aln_oi <- alns_oi_subsample[[aln_n]]
+      #iterate over sequences (corresponding to each taxa) in each alignment
+      for(seq_n in 1:nrow(aln_oi)){
+        row_oi <- which(rownames(seq_matrix)==rownames(aln_oi)[seq_n])
+        #iterate over each position in sequence and replace stop codons
+        for(pos_oi in seq(1, ncol(aln_oi)-3, 3)){
+          if(aln_oi[seq_n,pos_oi]=="t" && ((aln_oi[seq_n,pos_oi+1]=="a" && aln_oi[seq_n,pos_oi+2]=="g") || (aln_oi[seq_n,pos_oi+1]=="a" && aln_oi[seq_n,pos_oi+2]=="a") || (aln_oi[seq_n,pos_oi+1]=="g" && aln_oi[seq_n,pos_oi+2]=="a")) ){
+            aln_oi[seq_n,pos_oi:(pos_oi+2)] <- c("n", "n", "n")
+          }
+        }
+        seq_matrix[row_oi, (col_oi+1):(col_oi+ncol(aln_oi)-3)] <- aln_oi[seq_n,1:(ncol(aln_oi)-3)]
+      }
+    col_oi <- col_oi+ncol(aln_oi)-3
+    }
+    
+    write.table(x = gene_list[sample_oi], file = paste0(cds_aln_dir, gene_set, "_orthologs", set_size, "_set", set_n, "_list.txt"), quote = F, row.names = F, col.names = F)
+    write.dna(x = seq_matrix, file = paste0(cds_aln_dir, gene_set, "_orthologs", set_size, "_set", set_n,".fa"), format = "fasta", nbcol = 10, colsep = "")
+    write.dna(x = seq_matrix, file = paste0(mapnh_sd_dir, clade_oi, "_", gene_set,"_orthologs", set_size, "_set", set_n,".fa"), format = "fasta", nbcol = 10, colsep = "")
+    
+    gc3_oi <- sapply(rownames(seq_matrix), function(x) GC3(seq_matrix[x,]))
+    names(gc3_oi) <- sapply(rownames(seq_matrix), function(x) GCF_short_names[x, "V2"])
+    
+    plotTree.barplot(tree = subclade_GTDB_14k_tree_shortLabeled, x = gc3_oi*100, args.barplot = list(xlab=paste0("GC3% (set",set_n,")")), args.plotTree = list(fsize=0.8))
+  }
+}
+```
+
+#### Write NHX tree format
+Easier to use with bppml, mapNH later
+```{r write_nhx_tree }
+tree_file <- paste0(sp_tree_dir,clade_oi,"_GTDB_14k_tree_pruned", pruning_threshold,"_genome_ids.newick")
+tree_str <- scan(file = tree_file, what = "character")
+tree_vec <- strsplit(tree_str, split = "")[[1]]
+tree_vec_nhx <- c()
+
+node_id <- 0
+for(char_oi in tree_vec){
+  if(char_oi %in% c(",", ")")){
+    tree_vec_nhx <- c(tree_vec_nhx, c("[&&NHX:ND=",node_id,"]",char_oi))
+    node_id <- node_id+1
+  }else{
+    tree_vec_nhx <- c(tree_vec_nhx, char_oi)
+  }
+}
+tree_str_nhx <- paste0(tree_vec_nhx, collapse="")
+
+tree_file <- paste0(sp_tree_dir,clade_oi,"_GTDB.nhx")
+writeLines(text = tree_str_nhx, con = tree_file)
+
+tree_file <- paste0(sp_tree_dir,clade_oi,"_GTDB_14k_tree_pruned", pruning_threshold, "_shortLabeled.newick")
+tree_str <- scan(file = tree_file, what = "character")
+tree_vec <- strsplit(tree_str, split = "")[[1]]
+tree_vec_nhx <- c()
+
+node_id <- 0
+for(char_oi in tree_vec){
+  if(char_oi %in% c(",", ")")){
+    tree_vec_nhx <- c(tree_vec_nhx, c("[&&NHX:ND=",node_id,"]",char_oi))
+    node_id <- node_id+1
+  }else{
+    tree_vec_nhx <- c(tree_vec_nhx, char_oi)
+  }
+}
+tree_str_nhx <- paste0(tree_vec_nhx, collapse="")
+
+tree_file <- paste0(sp_tree_dir,clade_oi,"_GTDB_shortLabeled.nhx")
+writeLines(text = tree_str_nhx, con = tree_file)
+```
+
+#### Model fitting with bppml
+```{r create_bppml_param_file }
+bppml_def_param_fn <- paste0(main_dir, "Codes/ml_nonhom_gammaHet.bpp")
+
+model_nodes <- eval(parse(text=datasets_summary[clade_oi, "model_nodes"]))
+n_models <- length(model_nodes)
+
+bppml_model <- "YN98(frequencies=F3X4(init=observed))"
+n_models_str <- paste0("nonhomogeneous.number_of_models = ", n_models)
+
+gene_sets <- c("nonHEG", "HEG")
+for(set_n in 1:1){
+  for(gene_set in gene_sets[1]){
+    bppml_param_fn <- paste0(mapnh_sp_sd_dir, "ml_nonhom_", clade_oi,"_", gene_set, "_orthologs", set_size,"_set", set_n, ".bpp")
+    system2(command = "cp", args = c(bppml_def_param_fn, paste0(bppml_param_fn)))
+    
+    write(x = "", file = bppml_param_fn, append = T)
+    write(x = n_models_str, file = bppml_param_fn, append = T)
+    write(x = "", file = bppml_param_fn, append = T)
+    
+    for(model_n in 1:n_models){
+      bppml_model_str <- paste0("model",model_n," = ",bppml_model)
+      model_nodes_str <- paste0("model",model_n,".nodes_id = ",paste0(model_nodes[[model_n]],collapse = ","))
+      
+      write(x = bppml_model_str, file = bppml_param_fn, append = T)
+      write(x = model_nodes_str, file = bppml_param_fn, append = T)
+      write(x = "", file = bppml_param_fn, append = T)
+    }
+    
+    write(x = "input.sequence.remove_stop_codons = yes", file = bppml_param_fn, append = T)
+    
+    std_out_fn <- paste0(mapnh_sp_sd_dir, "ml_nonhom_", clade_oi, "_", gene_set, "_orthologs", set_size, "_set", set_n, ".stdout")
+    std_err_fn <- paste0(mapnh_sp_sd_dir, "ml_nonhom_", clade_oi, "_", gene_set, "_orthologs", set_size, "set", set_n, ".stderr")
+    
+    seq_fn=paste0(mapnh_sd_dir, clade_oi,"_", gene_set, "_orthologs", set_size, "_set", set_n,".fa")
+    
+    system2(command = "bppml", args = c(paste0("SEQ=",seq_fn), paste0("IN_TREE=",mapnh_sd_dir, clade_oi,"_GTDB_14k_bppml.newick"), paste0("OUT_TREE=",mapnh_sp_sd_dir,"tree_nonhom_ml_",clade_oi, "_",gene_set,"_orthologs", set_size, "_set",set_n,".dnd"), paste0("P_OUTPUT=",mapnh_sp_sd_dir,"model_nonhom_ml_", clade_oi,"_",gene_set,"_orthologs", set_size, "_set", set_n, ".params"), paste0("param=",bppml_param_fn)), stdout = std_out_fn, stderr = std_err_fn, wait = F)
+  }
+}
+```
+
+#### Estimate overall dN and dS using mapNH
+```{r run_mapNH }
+mapnh_dNdS_def_fn <- paste0(main_dir, "Codes/map_dNdS_per_branch_template.bpp")
+mapnh_param_fn <- paste0(mapnh_sp_sd_dir, "map_dNdS_per_branch", "_",clade_oi,".bpp")
+system2(command = "cp", args = c(mapnh_dNdS_def_fn, mapnh_param_fn))
+    
+for(set_n in 1:1){
+  for(gene_set in gene_sets){
+    std_out_fn <- paste0(mapnh_sp_sd_dir, "mapNH_", clade_oi, "_", gene_set, "_orthologs",set_size,"_set", set_n, ".stdout")
+    std_err_fn <- paste0(mapnh_sp_sd_dir, "mapNH_", clade_oi,"_", gene_set, "_orthologs",set_size,"_set", set_n, ".stderr")
+    
+    seq_fn=paste0(mapnh_sd_dir, clade_oi, "_", gene_set, "_orthologs", set_size, "_set", set_n,".fa")
+    system2(command = "mapnh", args = c(paste0("SEQ=",seq_fn), paste0("MAPNH_TREE=",mapnh_sp_sd_dir,"tree_nonhom_ml_",clade_oi, "_",gene_set,"_orthologs",set_size,"_set",set_n), paste0("MODEL=",mapnh_sp_sd_dir,"model_nonhom_ml_",clade_oi, "_",gene_set,"_orthologs",set_size,"_set", set_n), paste0("param=",mapnh_param_fn)), stdout = std_out_fn, stderr = std_err_fn, wait = F)
+  }
+}
+```
+
+#### Estimate dN and dS separately for weak-strong
+```{r run_mapNH_WS }
+mapnh_WS_def_fn <- paste0(main_dir, "Codes/map_WS_per_branch_template.bpp")
+mapnh_WS_param_fn <- paste0(mapnh_sp_sd_dir, "map_WS_per_branch", "_",clade_oi,".bpp")
+system2(command = "cp", args = c(mapnh_WS_def_fn, mapnh_WS_param_fn))
+
+for(set_n in 1:1){
+  for(gene_set in gene_sets){
+    std_out_fn <- paste0(mapnh_sp_sd_dir, "mapNH_WS_", clade_oi, "_", gene_set, "_orthologs",set_size,"_set", set_n, ".stdout")
+    std_err_fn <- paste0(mapnh_sp_sd_dir, "mapNH_WS_", clade_oi,"_", gene_set, "_orthologs",set_size,"_set", set_n, ".stderr")
+    
+    seq_fn=paste0(mapnh_sd_dir, clade_oi, "_", gene_set, "_orthologs", set_size, "_set", set_n,".fa")
+    system2(command = "mapnh", args = c(paste0("SEQ=",seq_fn), paste0("MAPNH_TREE=",mapnh_sp_sd_dir,"tree_nonhom_ml_",clade_oi, "_",gene_set,"_orthologs",set_size,"_set",set_n), paste0("MODEL=",mapnh_sp_sd_dir,"model_nonhom_ml_",clade_oi, "_",gene_set,"_orthologs",set_size,"_set", set_n), paste0("param=",mapnh_WS_param_fn)), stdout = std_out_fn, stderr = std_err_fn, wait = F)
+  }
+}
+```
+
+#### Plot dN dS for this dataset
+```{r plot_dN_dS_GC }
+dNdS_res_dir <- paste0(main_dir, "Results/dNdS/", clade_oi,"/")
+system2(command = "mkdir", args = c(dNdS_res_dir))
+
+source(file = "Codes/plotTree.wBars.R")
+for(set_n in 1:n_sets){
+  for(gene_set in gene_sets){
+    tree_ori <- read.tree(file=paste0(mapnh_sp_sd_dir,"tree_nonhom_ml_", clade_oi,"_",gene_set,"_orthologs",set_size,"_set",set_n,".dnd"))
+    tree_dN <- read.tree(file =paste0(mapnh_sd_dir, clade_oi,"_",gene_set,"_orthologs",set_size,"_set",set_n,".fa.counts_dN.dnd"))
+    tree_dS <- read.tree(file =paste0(mapnh_sd_dir, clade_oi,"_",gene_set,"_orthologs",set_size,"_set",set_n,".fa.counts_dS.dnd"))
+    GCF_short_names <- read.table(paste0(sd_dir, clade_oi, "_GCF_ids_shortnames.txt"), stringsAsFactors = F, row.names = 1, header = F, sep="\t")
+    
+    tree_ori_rooted <- tree_ori
+    tree_dN_rooted <- tree_dN
+    tree_dS_rooted <- tree_dS
+    
+    tree_ori_rooted$tip.label <- sapply(tree_ori_rooted$tip.label, function(x) GCF_short_names[x, "V2"])
+    tree_dN_rooted$tip.label <- sapply(tree_dN_rooted$tip.label, function(x) GCF_short_names[x, "V2"])
+    tree_dS_rooted$tip.label <- sapply(tree_dS_rooted$tip.label, function(x) GCF_short_names[x, "V2"])
+    
+    genome_dir <- paste0(main_dir, "Input_data/phylogenies/",clade_oi,"/", clade_oi,"_cds_alignments/")
+    library(seqinr)
+    gc_oi <- sapply(read.fasta(paste0(genome_dir,gene_set,"_orthologs",set_size,"_set1.fa")), function(x) GC(x, exact = F))
+    gc3_oi <- sapply(read.fasta(paste0(genome_dir,gene_set,"_orthologs",set_size,"_set1.fa")), function(x) GC3(x, exact = F))
+    names(gc3_oi) <- names(gc_oi) <- tree_dS_rooted$tip.label[names(gc3_oi)]
+    
+    svg(filename = paste0(dNdS_res_dir,clade_oi,"_dN_GC3_", gene_set,"_orthologs", set_size,"_set", set_n,".svg"), width = 8, height = 5)
+    plotTree.barplot(tree = tree_dN_rooted, x = gc3_oi*100, args.barplot = list(xlab="GC3 %"), args.plotTree = list(main=paste0("dN tree, ", gene_set, " orthologs set1")))
+    dev.off()
+    svg(filename = paste0(dNdS_res_dir,clade_oi,"_dS_GC3_", gene_set,"_orthologs", set_size,"_set", set_n,".svg"), width = 8, height = 5)
+    plotTree.barplot(tree = tree_dS_rooted, x = gc3_oi*100, args.barplot = list(xlab="GC3 %"), args.plotTree = list(main=paste0("dS tree, ", gene_set, " orthologs set1")))
+    dev.off()
+  }
+}
+```

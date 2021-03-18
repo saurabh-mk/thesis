@@ -1,0 +1,88 @@
+******************************************************************
+*                     Map NH, version 1.1.1                      *
+* Authors: J. Dutheil                       Created on  09/12/10 *
+*          B. Boussau                       Modif. 17/12/11      *
+*          L. Guéguen                       Last Modif. 24/11/14 *
+******************************************************************
+
+Parsing options:
+Parsing file /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/map_dNdS_per_branch_Buchnera7a_simul.bpp for options.
+Parsing file /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesEst_eOmegaSmaller2_eGCLess.params for options.
+Alphabet type .........................: Codon(letter=DNA)
+Genetic Code...........................: Standard
+Sequence file .........................: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesEst_eOmegaSmaller2_eGCLess.fa
+Sequence format .......................: FASTA file
+Sites to use...........................: all
+Remove Stop Codons.....................: no
+Number of sequences....................: 7
+Number of sites........................: 2000
+Input tree file .......................: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesEst_eOmegaSmaller2_eGCLess.dnd
+Input tree format .....................: Newick
+Number of leaves.......................: 7
+WARNING!!! Parameter output.tree_with_id.file not specified. Default used instead: none
+Heterogeneous model....................: general
+Number of distinct models..............: 2
+StopCodon frequencies distribution ....: quadratic
+StopCodon frequencies distribution ....: quadratic
+Parameter found........................: 1_Full.theta=0.587477
+Parameter found........................: 1_Full.theta1=0.612561
+Parameter found........................: 1_Full.theta2=0.577548
+Parameter found........................: 2_Full.theta=0.394603
+Parameter found........................: 2_Full.theta1=0.473894
+Parameter found........................: 2_Full.theta2=0.419832
+Parameter found........................: 3_Full.theta=0.6991
+Parameter found........................: 3_Full.theta1=0.429789
+Parameter found........................: 3_Full.theta2=0.471995
+Root frequencies ......................: F3X4
+Stationarity assumed...................: no
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_1=1.99369
+Parameter found........................: YN98.omega_1=0.0393423
+Parameter found........................: YN98.1_Full.theta_1=0.520874
+Parameter found........................: YN98.1_Full.theta1_1=0.594527
+Parameter found........................: YN98.1_Full.theta2_1=0.612105
+Parameter found........................: YN98.2_Full.theta_1=0.41964
+Parameter found........................: YN98.2_Full.theta1_1=0.55946
+Parameter found........................: YN98.2_Full.theta2_1=0.391276
+Parameter found........................: YN98.3_Full.theta_1=0.578175
+Parameter found........................: YN98.3_Full.theta1_1=0.354335
+Parameter found........................: YN98.3_Full.theta2_1=0.43444
+Model1 is associated to................: 9 node(s).
+StopCodon frequencies distribution ....: quadratic
+Substitution model.....................: YN98
+Frequencies Initialization for model...: None
+Parameter found........................: YN98.kappa_2=2.50763
+Parameter found........................: YN98.omega_2=0.0060482
+Parameter found........................: YN98.1_Full.theta_2=0.250815
+Parameter found........................: YN98.1_Full.theta1_2=0.595201
+Parameter found........................: YN98.1_Full.theta2_2=0.592726
+Parameter found........................: YN98.2_Full.theta_2=0.25746
+Parameter found........................: YN98.2_Full.theta1_2=0.560944
+Parameter found........................: YN98.2_Full.theta2_2=0.352631
+Parameter found........................: YN98.3_Full.theta_2=0.139915
+Parameter found........................: YN98.3_Full.theta1_2=0.472964
+Parameter found........................: YN98.3_Full.theta2_2=0.512063
+Model2 is associated to................: 3 node(s).
+Distribution...........................: Gamma
+Number of classes......................: 5
+Parameter found........................: Gamma.alpha=1.01353
+- Category 0 (Pr = 0.2) rate...........: 0.109839
+- Category 1 (Pr = 0.2) rate...........: 0.364122
+- Category 2 (Pr = 0.2) rate...........: 0.703488
+- Category 3 (Pr = 0.2) rate...........: 1.22405
+- Category 4 (Pr = 0.2) rate...........: 2.59851
+Rate distribution......................: Gamma
+Number of classes......................: 5
+Log-Likelihood.........................: -30042.6
+Substitution Register..................: DnDs
+  * Count type 1.......................: dS
+  * Count type 2.......................: dN
+null Parameter YN98.omega*.............: 1
+WARNING!!! Parameter test.global not specified. Default used instead: 0
+WARNING!!! Parameter test.branch not specified. Default used instead: 0
+Output counts of type 1 to file........: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesEst_eOmegaSmaller2_eGCLess.fa.counts_dS.dnd
+Output counts of type 2 to file........: /home/saurabh/Softwares/selection/mapnh/Buchnera7a/Buchnera7a_simulations/Buchnera7a_seq_simul_eBranchesEst_eOmegaSmaller2_eGCLess.fa.counts_dN.dnd
+MapNH's done. Bye.
+Total execution time: 0.000000d, 0.000000h, 0.000000m, 32.000000s.
